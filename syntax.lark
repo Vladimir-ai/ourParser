@@ -1,0 +1,62 @@
+%import common.WS
+%import common.CPP_COMMENT
+%import common.C_COMMENT
+%import common.CNAME -> IDENT
+%import common.SIGNED_FLOAT -> FLOAT_NUM
+%import common.SIGNED_INT -> INT_NUM
+
+
+
+%ignore C_COMMENT | WS | CPP_COMMENT
+
+IF: "if"
+FOR: "for"
+RETURN: "return"
+keyword: IF | FOR | RETURN
+
+type_ident:  IDENT
+
+int_num: INT_NUM
+float_num: FLOAT_NUM
+num: INT_NUM
+   | FLOAT_NUM
+
+ident: type_ident? IDENT
+
+?group_expr: num
+    | ident
+    | "(" expr ")"
+
+?mult: group_expr
+    | mult "*" group_expr -> mul
+    | mult "/" group_expr -> div
+
+?add: mult
+    | add "+" mult -> add
+    | add "-" mult -> sub
+
+?comparene: add
+    | comparene ">" add -> gt
+    | comparene ">=" add -> ge
+    | comparene "<" add -> lt
+    | comparene "<=" add -> le
+
+?comparee: comparene
+    | comparee "==" comparene -> eq
+    | comparee "!=" comparene -> ne
+
+?logical_and: comparee
+    | logical_and "&&" comparee -> and
+
+?logical_or: logical_and
+    | logical_or "||" logical_and -> or
+
+expr: logical_or
+
+assign: ident "=" expr
+
+stmt: assign
+
+start:  (stmt)*
+
+
