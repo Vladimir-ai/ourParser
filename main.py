@@ -16,12 +16,20 @@ if __name__ == '__main__':
             
             if (a == 2) a = 3;
             else b = 5;
-            */
+            
             while (b < 0) b = b + 1;
             while (b < 0){
                 index = 1;
                 b = b+1;
+            }*/
+            
+            for (int a = 0; a < 2; a = a + 2){
+                d = 0;
+                d = 1;
             }
+            
+            for (int a = 0; a < 2; a = a + 2) d = d + 1;
+            
             
         '''))
     # prog = parser_base.parse('''
