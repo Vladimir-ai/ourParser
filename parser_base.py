@@ -1,5 +1,5 @@
-from lark import Lark
-
+from lark import Lark, Transformer
+from ast_node import *
 
 '''
 type_ident = (("int" | "float" ))    TO-DO   |  "bool" | "char"))
@@ -26,6 +26,16 @@ block -> '{' stmts '}'
 '''
 
 
-def create_parser():
-   parser = Lark.open("./syntax.lark", start='start')
-   return parser
+class ASTBuilder(Transformer):
+   def __getattr__(self, item):
+      def get_node(*args):
+         return eval(''.join(x.capitalize() or '_' for x in item.split('_')) + 'Node')(*args)
+      return get_node
+
+
+def parse(prog: str, Debug=False) -> StmtListNode:
+   parser = Lark.open("./syntax.lark", lexer='dynamic_complete', start='start')
+   prog = parser.parse(prog)
+   if Debug: print(prog)
+   prog = ASTBuilder().transform(prog)
+   return prog

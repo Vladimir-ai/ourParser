@@ -8,19 +8,14 @@
 
 %ignore C_COMMENT | WS | CPP_COMMENT
 
-IF: "if"
-FOR: "for"
-RETURN: "return"
-keyword: IF | FOR | RETURN
+?type_ident: IDENT -> type_ident
 
-type_ident:  IDENT
+?int_num: INT_NUM
+?float_num: FLOAT_NUM
+?num: INT_NUM | FLOAT_NUM -> num
 
-int_num: INT_NUM
-float_num: FLOAT_NUM
-num: INT_NUM
-   | FLOAT_NUM
-
-ident: type_ident? IDENT
+//ident: IDENT -> ident
+ident: type_ident? IDENT -> ident
 
 ?group_expr: num
     | ident
@@ -51,30 +46,29 @@ ident: type_ident? IDENT
 ?logical_or: logical_and
     | logical_or "||" logical_and -> or
 
-expr: logical_or
+?expr: logical_or
 
-assign: ident "=" expr ";"?
+?assign: ident "=" expr -> assign
 
-simple_stmt: assign
+?simple_stmt: assign
 
-block: "{" stmt_list "}"
+?block: "{" stmt_list "}"
 
-if: "if" "(" expr ")" stmt ("else" stmt)?
+?if: "if" "(" expr ")" stmt ("else" stmt)? -> if
 
-while: "while" "(" expr ")" stmt
+?while: "while" "(" expr ")" stmt -> while
 
-comma_sep_stmts: simple_stmt ("," simple_stmt)*
+?comma_sep_stmts: simple_stmt ("," simple_stmt)*
+?comma_sep_exprs: expr ("," expr)*
 
-comma_sep_exprs: expr ("," expr)*
+?for_expr: comma_sep_stmts? ";" comma_sep_exprs? ";" comma_sep_stmts?
 
-for_expr: comma_sep_stmts ";" comma_sep_exprs ";" comma_sep_stmts
+?for: "for" "(" for_expr ")" stmt? -> for
 
-for: "for" "(" for_expr ")" stmt
+?stmt: simple_stmt ";"? | if | while | for ";"? | block -> stmt
 
-stmt: simple_stmt | if | while | for | block
+?stmt_list: stmt* -> stmt_list
 
-stmt_list: stmt*
-
-start:  stmt_list
+?start:  stmt_list
 
 

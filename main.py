@@ -2,8 +2,8 @@ import parser_base
 import os
 
 if __name__ == '__main__':
-    print(parser_base.create_parser().parse(
-        '''/*
+    prog = '''
+            /*
             a = 1 + b
             if (a < 2){
                 d = b
@@ -29,12 +29,16 @@ if __name__ == '__main__':
             }
             
             for (int a = 0; a < 2; a = a + 2) d = d + 1;
-            */
-            
-            //f = 2.9 + 1e4
+            f = 2.9 + 1e4
             int b = 1 % 2
+        
+            for (;;);
             
-        '''))
+            
+            return a = 0; */
+            int b = 2;
+        '''
+    print(*parser_base.parse(prog, True).tree, sep=os.linesep)
     # prog = parser_base.parse('''
     #         int a = 1 + 1
     #         double b = a
