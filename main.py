@@ -3,8 +3,25 @@ import os
 
 if __name__ == '__main__':
     print(parser_base.create_parser().parse(
-        '''
+        '''/*
             a = 1 + b
+            if (a < 2){
+                d = b
+            }
+            if (a > 2){
+                w = w
+            }else{
+                _A = 1
+            }
+            
+            if (a == 2) a = 3;
+            else b = 5;
+            */
+            while (b < 0) b = b + 1;
+            while (b < 0){
+                index = 1;
+                b = b+1;
+            }
             
         '''))
     # prog = parser_base.parse('''

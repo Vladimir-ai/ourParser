@@ -53,10 +53,18 @@ ident: type_ident? IDENT
 
 expr: logical_or
 
-assign: ident "=" expr
+assign: ident "=" expr ";"?
 
-stmt: assign
+block: "{" stmt_list "}"
 
-start:  (stmt)*
+if: "if" "(" expr ")" stmt ("else" stmt)?
+
+while: "while" "(" expr ")" stmt
+
+stmt: assign | if | while | block
+
+stmt_list: stmt*
+
+start:  stmt_list
 
 
