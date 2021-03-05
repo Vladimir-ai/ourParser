@@ -21,7 +21,7 @@ if __name__ == '__main__':
             while (b < 0){
                 index = 1;
                 b = b+1;
-            }*/
+            }
             
             for (int a = 0; a < 2; a = a + 2){
                 d = 0;
@@ -29,7 +29,10 @@ if __name__ == '__main__':
             }
             
             for (int a = 0; a < 2; a = a + 2) d = d + 1;
+            */
             
+            //f = 2.9 + 1e4
+            int b = 1 % 2
             
         '''))
     # prog = parser_base.parse('''

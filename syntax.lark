@@ -6,7 +6,6 @@
 %import common.SIGNED_INT -> INT_NUM
 
 
-
 %ignore C_COMMENT | WS | CPP_COMMENT
 
 IF: "if"
@@ -30,6 +29,7 @@ ident: type_ident? IDENT
 ?mult: group_expr
     | mult "*" group_expr -> mul
     | mult "/" group_expr -> div
+    | mult "%" group_expr -> mod
 
 ?add: mult
     | add "+" mult -> add
