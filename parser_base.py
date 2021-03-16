@@ -1,4 +1,4 @@
-from lark import Lark, Transformer
+from lark import Lark, Transformer, InlineTransformer
 from ast_node import *
 
 '''
@@ -26,7 +26,7 @@ block -> '{' stmts '}'
 '''
 
 
-class ASTBuilder(Transformer):
+class ASTBuilder(InlineTransformer):
    def __getattr__(self, item):
       def get_node(*args):
          return eval(''.join(x.capitalize() or '_' for x in item.split('_')) + 'Node')(*args)
@@ -34,7 +34,7 @@ class ASTBuilder(Transformer):
 
 
 def parse(prog: str, Debug=False) -> StmtListNode:
-   parser = Lark.open("./syntax.lark", lexer='dynamic_complete', start='start')
+   parser = Lark.open("./syntax.lark", start='start') #, lexer='dynamic_complete'
    prog = parser.parse(prog)
    if Debug: print(prog)
    prog = ASTBuilder().transform(prog)

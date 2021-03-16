@@ -8,14 +8,13 @@
 
 %ignore C_COMMENT | WS | CPP_COMMENT
 
-?type_ident: IDENT -> type_ident
+type_ident: /int/ | "float" | "bool" | "char"
 
-?int_num: INT_NUM
-?float_num: FLOAT_NUM
+int_num: INT_NUM
+float_num: FLOAT_NUM
 ?num: INT_NUM | FLOAT_NUM -> num
 
-//ident: IDENT -> ident
-ident: type_ident? IDENT -> ident
+ident: IDENT -> ident
 
 ?group_expr: num
     | ident
@@ -48,7 +47,9 @@ ident: type_ident? IDENT -> ident
 
 ?expr: logical_or
 
-?assign: ident "=" expr -> assign
+?assign: type_ident? ident "=" expr -> assign
+
+//?init: type_ident ident
 
 ?simple_stmt: assign
 

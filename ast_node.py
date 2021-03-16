@@ -74,10 +74,9 @@ class FloatNumNode(NumNode):
 
 
 class TypeIdentNode(AstNode):
-    def __init__(self, nodes: List[ExprNode]):
+    def __init__(self, type: str):
         super().__init__()
-        self.type = nodes[0]
-        self.assign = nodes[1]
+        self.type = type
 
     def __str__(self) -> str:
         return str(self.type)
