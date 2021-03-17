@@ -3,21 +3,21 @@ import os
 
 if __name__ == '__main__':
     prog = '''
-            /*
-            a = 1 + b
+            /* a = 1 + b;
             if (a < 2){
-                d = b
+                d = b;
             }
             if (a > 2){
-                w = w
+                w = w;
             }else{
-                _A = 1
+                _A = 1;
             }
             
             if (a == 2) a = 3;
             else b = 5;
             
-            while (b < 0) b = b + 1;
+            while (b < 0)
+             b = b + 1;
             while (b < 0){
                 index = 1;
                 b = b+1;
@@ -29,14 +29,16 @@ if __name__ == '__main__':
             }
             
             for (int a = 0; a < 2; a = a + 2) d = d + 1;
-            f = 2.9 + 1e4
-            int b = 1 % 2
+            f = 2.9 + 1e4;
+            //int b = 1 % 2;
         
             for (;;);
             
-            
-            return a = 0; */
-            int b = 2;
+            return a = 0; 
+            */
+            if (1 < 2); //WARNING!!! it's not call!!!
+            while (1 < 2);
+            //int b = 2;
         '''
     print(*parser_base.parse(prog, True).tree, sep=os.linesep)
     # prog = parser_base.parse('''

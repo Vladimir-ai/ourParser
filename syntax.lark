@@ -1,75 +1,89 @@
+%import common.NUMBER
+%import common.ESCAPED_STRING
+%import common.CNAME
+%import common.NEWLINE
 %import common.WS
-%import common.CPP_COMMENT
 %import common.C_COMMENT
-%import common.CNAME -> IDENT
-%import common.SIGNED_FLOAT -> FLOAT_NUM
-%import common.SIGNED_INT -> INT_NUM
+%import common.CPP_COMMENT
+
+%ignore WS
+%ignore CPP_COMMENT
+%ignore C_COMMENT
+
+num: NUMBER  -> literal
+str: ESCAPED_STRING  -> literal
+ident: CNAME
+
+ADD:     "+"
+SUB:     "-"
+MUL:     "*"
+DIV:     "/"
+AND:     "&&"
+OR:      "||"
+BIT_AND: "&"
+BIT_OR:  "|"
+GE:      ">="
+LE:      "<="
+NEQUALS: "!="
+EQUALS:  "=="
+GT:      ">"
+LT:      "<"
 
 
-%ignore C_COMMENT | WS | CPP_COMMENT
+call:  ident "(" ( expr ( "," expr )* )? ")"
 
-type_ident: /int/ | "float" | "bool" | "char"
-
-int_num: INT_NUM
-float_num: FLOAT_NUM
-?num: INT_NUM | FLOAT_NUM -> num
-
-ident: IDENT -> ident
-
-?group_expr: num
+?group: num | str
     | ident
+    | call
     | "(" expr ")"
 
-?mult: group_expr
-    | mult "*" group_expr -> mul
-    | mult "/" group_expr -> div
-    | mult "%" group_expr -> mod
+?mult: group
+    | mult ( MUL | DIV ) group  -> bin_op
 
 ?add: mult
-    | add "+" mult -> add
-    | add "-" mult -> sub
+    | add ( ADD | SUB ) mult  -> bin_op
 
-?comparene: add
-    | comparene ">" add -> gt
-    | comparene ">=" add -> ge
-    | comparene "<" add -> lt
-    | comparene "<=" add -> le
+?compare1: add
+    | add ( GT | LT | GE | LE ) add  -> bin_op
 
-?comparee: comparene
-    | comparee "==" comparene -> eq
-    | comparee "!=" comparene -> ne
+?compare2: compare1
+    | compare1 ( EQUALS | NEQUALS ) compare1  -> bin_op
 
-?logical_and: comparee
-    | logical_and "&&" comparee -> and
+?logical_and: compare2
+    | logical_and AND compare2  -> bin_op
 
 ?logical_or: logical_and
-    | logical_or "||" logical_and -> or
+    | logical_or OR logical_and  -> bin_op
 
 ?expr: logical_or
 
-?assign: type_ident? ident "=" expr -> assign
+?var_decl_inner: ident
+    | ident "=" expr  -> assign
 
-//?init: type_ident ident
+vars_decl: ident var_decl_inner ( "," var_decl_inner )*
 
-?simple_stmt: assign
+?simple_stmt: ident "=" expr  -> assign
+    | call
 
-?block: "{" stmt_list "}"
+?for_stmt_list: vars_decl
+    | ( simple_stmt ( "," simple_stmt )* )?  -> stmt_list
+?for_cond: expr
+    |   -> stmt_list
+?for_body: stmt
+    | ";"  -> stmt_list
 
-?if: "if" "(" expr ")" stmt ("else" stmt)? -> if
+?stmt: ";"
+    | vars_decl ";"
+    | "if" "(" expr ")" stmt ("else" stmt)?  -> if
+    | "for" "(" for_stmt_list ";" for_cond ";" for_stmt_list ")" for_body  -> for
+    |  "while" "(" expr ")" [stmt ";"] -> while
+    | "{" stmt_list "}"
+    | simple_stmt ";"
 
-?while: "while" "(" expr ")" stmt -> while
 
-?comma_sep_stmts: simple_stmt ("," simple_stmt)*
-?comma_sep_exprs: expr ("," expr)*
+stmt_list: ( stmt ";"* )*
 
-?for_expr: comma_sep_stmts? ";" comma_sep_exprs? ";" comma_sep_stmts?
+?prog: stmt_list
 
-?for: "for" "(" for_expr ")" stmt? -> for
-
-?stmt: simple_stmt ";"? | if | while | for ";"? | block -> stmt
-
-?stmt_list: stmt* -> stmt_list
-
-?start:  stmt_list
-
+?start: prog
 
