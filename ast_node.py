@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, Union
 from enum import Enum
 
+from lark import Token
+
 
 class AstNode(ABC):
     def __init__(self, row: Optional[int] = None, line: Optional[int] = None, **props):
@@ -22,10 +24,10 @@ class AstNode(ABC):
     @property
     def tree(self) -> [str, ...]:
         res = [str(self)]
-        childs_temp = self.children
-        for i, child in enumerate(childs_temp):
+        children_temp = self.children
+        for i, child in enumerate(children_temp):
             ch0, ch = '├', '│'
-            if i == len(childs_temp) - 1:
+            if i == len(children_temp) - 1:
                 ch0, ch = '└', ' '
             res.extend(((ch0 if j == 0 else ch) + ' ' + s for j, s in enumerate(child.tree)))
         return res
@@ -184,21 +186,6 @@ class ForNode(StmtNode):
         return 'for'
 
 
-class WhileNode(StmtNode):
-    def __init__(self, cond: ExprNode, stmtList: StmtNode,
-                 row: Optional[int] = None, line: Optional[int] = None, **props):
-        super().__init__(row=row, line=line, **props)
-        self.cond = cond
-        self.stmtList = stmtList if stmtList else _empty
-
-    @property
-    def children(self) -> Tuple['AstNode', ...]:
-        return self.cond, self.stmtList
-
-    def __str__(self) -> str:
-        return 'while'
-
-
 class StmtListNode(StmtNode):
     def __init__(self, *exprs: StmtNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
@@ -214,3 +201,18 @@ class StmtListNode(StmtNode):
 
 
 _empty = StmtListNode()
+
+
+class WhileNode(StmtNode):
+    def __init__(self, cond: ExprNode, stmt_list: StmtNode,
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        self.cond = cond
+        self.stmt_list = stmt_list if stmt_list else _empty
+
+    @property
+    def children(self) -> Tuple['AstNode', ...]:
+        return self.cond, self.stmt_list
+
+    def __str__(self) -> str:
+        return 'while'

@@ -51,7 +51,7 @@ class ASTBuilder(InlineTransformer):
 
 
 def parse(prog: str, Debug=False) -> StmtListNode:
-   parser = Lark.open("./syntax.lark", start='start') #, lexer='dynamic_complete'
+   parser = Lark.open("./syntax.lark", start='start', lexer='standard')#, lexer="standard")
    prog = parser.parse(prog)
    if Debug: print(prog)
    prog = ASTBuilder().transform(prog)
