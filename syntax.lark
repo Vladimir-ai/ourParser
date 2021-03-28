@@ -76,7 +76,7 @@ vars_decl: ident var_decl_inner ( "," var_decl_inner )*
     | vars_decl ";"
     | "if" "(" expr ")" stmt ("else" stmt)?  -> if
     | "for" "(" for_stmt_list ";" for_cond ";" for_stmt_list ")" for_body  -> for
-    |  "while" "(" expr ")" [stmt ";"] -> while
+    |  "while" "(" expr ")" for_stmt_list -> while
     | "{" stmt_list "}"
     | simple_stmt ";"
 

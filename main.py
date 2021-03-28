@@ -38,6 +38,7 @@ if __name__ == '__main__':
             */
             if (1 < 2); //WARNING!!! it's not call!!!
             while (1 < 2);
+            while(a);
             //int b = 2;
         '''
     print(*parser_base.parse(prog, True).tree, sep=os.linesep)
