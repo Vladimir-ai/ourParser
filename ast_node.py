@@ -4,6 +4,18 @@ from enum import Enum
 
 from lark import Token
 
+class KeyWords(Enum):
+    RETURN = 'return'
+    FOR = 'for'
+    INT = 'int'
+    CHAR = 'char'
+    VOID = 'void'
+    DOUBLE = 'double'
+    FLOAT = 'float'
+
+def checkNameAndException(name : str, text : str):
+    if name.upper() in KeyWords.__dict__:
+        raise BaseException("Using keyword in name of " + text)
 
 class AstNode(ABC):
     def __init__(self, row: Optional[int] = None, line: Optional[int] = None, **props):
@@ -61,6 +73,7 @@ class IdentNode(ExprNode):
         super().__init__(row=row, line=line, **props)
         self.name = str(name)
 
+
     def __str__(self) -> str:
         return str(self.name)
 
@@ -106,6 +119,8 @@ class VarsDeclNode(StmtNode):
     def __init__(self, vars_type: StmtNode, *vars_list: Tuple[AstNode, ...],
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
+        for var in vars_list:
+            checkNameAndException(str(var), "var")
         self.vars_type = vars_type
         self.vars_list = vars_list
 
@@ -122,9 +137,7 @@ class CallNode(StmtNode):
     def __init__(self, func: IdentNode, *params: Tuple[ExprNode],
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-
-        if(str(func) == "for"):
-            raise BaseException("Using keyword in func name")
+        checkNameAndException(str(func), "function")
         self.func = func
         self.params = params
 
@@ -141,6 +154,7 @@ class AssignNode(StmtNode):
     def __init__(self, var: IdentNode, val: ExprNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
+        checkNameAndException(str(var), "var")
         self.var = var
         self.val = val
 
@@ -168,7 +182,7 @@ class IfNode(StmtNode):
         return 'if'
 
 
-class ForNode(StmtNode):
+class ForNode(AstNode):
     def __init__(self, init: Union[StmtNode, None], cond: Union[ExprNode, StmtNode, None],
                  step: Union[StmtNode, None], body: Union[StmtNode, None] = None,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
@@ -216,3 +230,101 @@ class WhileNode(StmtNode):
 
     def __str__(self) -> str:
         return 'while'
+
+
+class ArrayDeclarationNode(StmtNode):
+    def __init__(self, vars_type: IdentNode, vars: IdentNode, value: ExprNode,
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        checkNameAndException(str(vars), "array")
+        self.vars_type = vars_type
+        self.vars = vars
+        self.value = value
+
+    @property
+    def children(self) -> Tuple[ExprNode, ...]:
+        # return self.vars_type, (*self.vars_list)
+        return (self.vars_type, self.vars, self.value)
+
+    def __str__(self) -> str:
+        return 'array_declaration'
+
+class ArrayNode(ExprNode):
+    def __init__(self, name: IdentNode, value: ExprNode,
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        checkNameAndException(str(name), "array")
+        self.name = name
+        self.value = value
+
+    @property
+    def children(self) -> Tuple[ExprNode, ...]:
+        # return self.vars_type, (*self.vars_list)
+        return (self.name, self.value)
+
+    def __str__(self) -> str:
+        return 'array_index'
+
+class ArgumentNode(StmtNode):
+    def __init__(self, type_var: IdentNode, name: IdentNode,
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        checkNameAndException(str(name), "argument in function declaration")
+        self.type_var = type_var
+        self.name = name
+
+
+    @property
+    def children(self) -> Tuple[IdentNode, ExprNode]:
+        return self.type_var, self.name
+
+    def __str__(self) -> str:
+        return 'argument'
+
+
+
+class FunctionDefinictionNode(StmtNode):
+    def __init__(self, vars_type: IdentNode, name: IdentNode, *value: Tuple[ArgumentNode],
+             row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        self.vars_type = vars_type
+        self.name = name
+        self.value = value
+
+    @property
+    def children(self) -> Tuple[ExprNode, ...]:
+            # return self.vars_type, (*self.vars_list)
+        return (self.vars_type, self.name) + self.value
+
+    def __str__(self) -> str:
+        return 'function_declaration'
+
+class FunctionNode(StmtNode):
+    def __init__(self, func: FunctionDefinictionNode, stmt_list: StmtListNode ,
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        self.func = func
+        self.list = stmt_list
+
+    @property
+    def children(self) -> Tuple[ExprNode, ...]:
+        # return self.vars_type, (*self.vars_list)
+        return (self.func, self.list)
+
+    def __str__(self) -> str:
+        return 'function'
+
+class ReturnNode(StmtNode):
+    def __init__(self, expr : ExprNode,
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        #checkNameAndException(str(func), "function")
+        self.expr = expr
+
+    @property
+    def children(self) -> Tuple[ExprNode, ...]:
+        # return self.func, (*self.params)
+        return (self.expr,)
+
+    def __str__(self) -> str:
+        return 'return'

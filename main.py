@@ -3,7 +3,9 @@ import os
 
 if __name__ == '__main__':
     prog = '''
-            /* a = 1 + b;
+
+           /*int a[1];
+           a[3 < 4];
             if (a < 2){
                 d = b;
             }
@@ -34,11 +36,20 @@ if __name__ == '__main__':
         
             for (;;);
             
-            return a = 0; 
-            */
-//            if (1 < 2); //WARNING!!! it's not call!!!
-            while (1 < 2);
-            while(a);
+            return a = 0; */
+            a[0];
+            int retur = 0, a = 0, c;
+            retu = a + b;
+            void abc(int a, int b, int c)
+            {
+            example = 1;
+            }
+            for(;;);
+            return 1;
+            
+            //int (1 < 2); //WARNING!!! it's not call!!!
+            //while (1 < 2);
+            //while(a);
             //int b = 2;
     
         '''

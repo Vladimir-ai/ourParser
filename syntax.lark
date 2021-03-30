@@ -13,6 +13,7 @@
 num: NUMBER  -> literal
 str: ESCAPED_STRING  -> literal
 ident: CNAME
+array: ident "[" expr "]"
 
 ADD:     "+"
 SUB:     "-"
@@ -60,6 +61,8 @@ call:  ident "(" ( expr ( "," expr )* )? ")"
 ?var_decl_inner: ident
     | ident "=" expr  -> assign
 
+array_declaration: ident ident "[" expr "]"
+
 vars_decl: ident var_decl_inner ( "," var_decl_inner )*
 
 ?simple_stmt: ident "=" expr  -> assign
@@ -69,19 +72,24 @@ vars_decl: ident var_decl_inner ( "," var_decl_inner )*
     | ( simple_stmt ( "," simple_stmt )* )?  -> stmt_list
 ?for_cond: expr
     |   -> stmt_list
-?for_body: stmt
+?body: stmt
     | ";"  -> stmt_list
 
-SEMISILICON: ";"
+argument: ident ident
 
-?stmt: SEMISILICON
-    | "while" "(" expr ")" for_body -> while
+function_definiction: ident ident "(" (argument ( "," argument )*)?  ")"
+
+?stmt: ";"
+    | "while" "(" expr ")" body -> while
     | vars_decl ";"
-    | "if" "(" expr ")" stmt ("else" stmt)?  -> if
-    | "for" "(" for_stmt_list ";" for_cond ";" for_stmt_list ")" for_body  -> for
+    | "if" "(" expr ")" body ("else" body)?  -> if
+    | "for" "(" for_stmt_list ";" for_cond ";" for_stmt_list ")" body  -> for
     | "{" stmt_list "}"
     | simple_stmt ";"
-
+    | array_declaration ";"
+    | array
+    | function_definiction "{" stmt_list "}"-> function
+    | "return" expr ";" -> return
 
 stmt_list: ( stmt ";"* )*
 
