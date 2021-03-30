@@ -1,10 +1,13 @@
 %import common.NUMBER
+%import common.DIGIT
 %import common.ESCAPED_STRING
 %import common.CNAME
 %import common.NEWLINE
 %import common.WS
 %import common.C_COMMENT
 %import common.CPP_COMMENT
+%import common.LETTER
+
 
 %ignore WS
 %ignore CPP_COMMENT
@@ -33,7 +36,7 @@ LT:      "<"
 
 call:  ident "(" ( expr ( "," expr )* )? ")"
 
-?group: num | str
+?group: num | str | array
     | ident
     | call
     | "(" expr ")"
@@ -82,7 +85,8 @@ function_definiction: ident ident "(" (argument ( "," argument )*)?  ")"
 ?stmt: ";"
     | "while" "(" expr ")" body -> while
     | vars_decl ";"
-    | "if" "(" expr ")" body ("else" body)?  -> if
+    | "if" "(" expr ")" body -> if
+    | "if" "(" expr ")" body "else" body  -> if
     | "for" "(" for_stmt_list ";" for_cond ";" for_stmt_list ")" body  -> for
     | "{" stmt_list "}"
     | simple_stmt ";"

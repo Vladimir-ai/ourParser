@@ -13,6 +13,12 @@ class KeyWords(Enum):
     DOUBLE = 'double'
     FLOAT = 'float'
 
+class BaseType(Enum):
+    VOID = 'void'
+    INT = 'int'
+    FLOAT = 'float'
+    BOOL = 'bool'
+
 def checkNameAndException(name : str, text : str):
     if name.upper() in KeyWords.__dict__:
         raise BaseException("Using keyword in name of " + text)
@@ -121,6 +127,8 @@ class VarsDeclNode(StmtNode):
         super().__init__(row=row, line=line, **props)
         for var in vars_list:
             checkNameAndException(str(var), "var")
+        if not str(vars_type).upper() in BaseType.__dict__:
+            raise BaseException("Using keyword in name of type var")
         self.vars_type = vars_type
         self.vars_list = vars_list
 

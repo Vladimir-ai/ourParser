@@ -4,7 +4,7 @@ import os
 if __name__ == '__main__':
     prog = '''
 
-           /*int a[1];
+           int a[1];
            a[3 < 4];
             if (a < 2){
                 d = b;
@@ -36,17 +36,25 @@ if __name__ == '__main__':
         
             for (;;);
             
-            return a = 0; */
+            int a = 0; 
             a[0];
             int retur = 0, a = 0, c;
-            retu = a + b;
+            retur = a + b;
             void abc(int a, int b, int c)
             {
             example = 1;
             }
+            
+            if(d) 
+            if(d)
+            int b = 0;
+            else
+            int c = 9;
+            
+            
+            func(a[1+b[1] + func(1,1)]);
             for(;;);
             return 1;
-            
             //int (1 < 2); //WARNING!!! it's not call!!!
             //while (1 < 2);
             //while(a);
