@@ -80,7 +80,7 @@ vars_decl: ident var_decl_inner ( "," var_decl_inner )*
 
 argument: ident ident
 
-function_definiction: ident ident "(" (argument ( "," argument )*)?  ")"
+argument_list: (argument ( "," argument )*)?
 
 ?stmt: ";"
     | "while" "(" expr ")" body -> while
@@ -92,7 +92,7 @@ function_definiction: ident ident "(" (argument ( "," argument )*)?  ")"
     | simple_stmt ";"
     | array_declaration ";"
     | array
-    | function_definiction "{" stmt_list "}"-> function
+    | ident ident "(" argument_list ")" "{" stmt_list "}"-> function
     | "return" expr ";" -> return
 
 stmt_list: ( stmt ";"* )*

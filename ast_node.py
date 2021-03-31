@@ -289,35 +289,32 @@ class ArgumentNode(StmtNode):
     def __str__(self) -> str:
         return 'argument'
 
-
-
-class FunctionDefinictionNode(StmtNode):
-    def __init__(self, vars_type: IdentNode, name: IdentNode, *value: Tuple[ArgumentNode],
-             row: Optional[int] = None, line: Optional[int] = None, **props):
-        super().__init__(row=row, line=line, **props)
-        self.vars_type = vars_type
-        self.name = name
-        self.value = value
-
-    @property
-    def children(self) -> Tuple[ExprNode, ...]:
-            # return self.vars_type, (*self.vars_list)
-        return (self.vars_type, self.name) + self.value
-
-    def __str__(self) -> str:
-        return 'function_declaration'
-
-class FunctionNode(StmtNode):
-    def __init__(self, func: FunctionDefinictionNode, stmt_list: StmtListNode ,
+class ArgumentListNode(StmtNode):
+    def __init__(self, *arguments: Tuple[ArgumentNode],
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        self.func = func
+        self.arguments = arguments
+
+    @property
+    def children(self) -> Tuple[ArgumentNode]:
+        return self.arguments
+
+    def __str__(self) -> str:
+        return 'argument_list'
+
+class FunctionNode(StmtNode):
+    def __init__(self, type: IdentNode, name: IdentNode, argument_list: ArgumentListNode, stmt_list: StmtListNode ,
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        self.type = type
+        self.name = name
+        self.argument_list = argument_list
         self.list = stmt_list
 
     @property
     def children(self) -> Tuple[ExprNode, ...]:
         # return self.vars_type, (*self.vars_list)
-        return (self.func, self.list)
+        return (self.type, self.name, self.argument_list, self.list)
 
     def __str__(self) -> str:
         return 'function'
