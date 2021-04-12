@@ -18,13 +18,14 @@ class KeyWords(Enum):
 class BaseType(Enum):
     VOID = 'void'
     INT = 'int'
+    CHAR = 'char'
     FLOAT = 'float'
     BOOL = 'bool'
 
 
-def checkNameAndException(name: str, text: str):
+def checkNameIsKeywordAndRaiseException(name: str, text: str):
     if name.upper() in KeyWords.__dict__:
-        raise BaseException("Using keyword in name of " + text)
+        raise Exception("Using keyword in name of " + text)
 
 
 class AstNode(ABC):
@@ -144,9 +145,9 @@ class VarsDeclNode(StmtNode):
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
         for var in vars_list:
-            checkNameAndException(str(var), "var")
+            checkNameIsKeywordAndRaiseException(str(var), "var")
         if not str(vars_type).upper() in BaseType.__dict__:
-            raise BaseException("Using keyword in name of type var")
+            raise Exception("Using keyword in name of type var")
         self.vars_type = vars_type
         self.vars_list = vars_list
 
@@ -163,7 +164,7 @@ class CallNode(StmtNode):
     def __init__(self, func: IdentNode, *params: Tuple[ExprNode],
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        checkNameAndException(str(func), "function")
+        checkNameIsKeywordAndRaiseException(str(func), "function")
         self.func = func
         self.params = params
 
@@ -180,7 +181,7 @@ class AssignNode(StmtNode):
     def __init__(self, var: IdentNode, val: ExprNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        checkNameAndException(str(var), "var")
+        checkNameIsKeywordAndRaiseException(str(var), "var")
         self.var = var
         self.val = val
 
@@ -262,7 +263,7 @@ class ArrayDeclarationNode(StmtNode):
     def __init__(self, vars_type: IdentNode, vars: IdentNode, value: ExprNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        checkNameAndException(str(vars), "array")
+        checkNameIsKeywordAndRaiseException(str(vars), "array")
         self.vars_type = vars_type
         self.vars = vars
         self.value = value
@@ -276,11 +277,11 @@ class ArrayDeclarationNode(StmtNode):
         return 'array_declaration'
 
 
-class ArrayNode(ExprNode):
+class ArrayIndexingNode(ExprNode):
     def __init__(self, name: IdentNode, value: ExprNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        checkNameAndException(str(name), "array")
+        checkNameIsKeywordAndRaiseException(str(name), "array")
         self.name = name
         self.value = value
 
@@ -297,7 +298,7 @@ class ArgumentNode(StmtNode):
     def __init__(self, type_var: IdentNode, name: IdentNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        checkNameAndException(str(name), "argument in function declaration")
+        checkNameIsKeywordAndRaiseException(str(name), "argument in function declaration")
         self.type_var = type_var
         self.name = name
 
@@ -323,6 +324,21 @@ class ArgumentListNode(StmtNode):
         return 'argument_list'
 
 
+class ReturnTypeNode(AstNode):
+    def __init__(self, type: IdentNode, isArr: Optional[str] = None,
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        self.type = type
+        self.isArr = isArr
+
+    @property
+    def children(self) -> Tuple[ExprNode, ...]:
+        return [self.type]
+
+    def __str__(self) -> str:
+        return f'return type {"array" if self.isArr is not None else ""}'
+
+
 class FunctionNode(StmtNode):
     def __init__(self, type: IdentNode, name: IdentNode, argument_list: ArgumentListNode, stmt_list: StmtListNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
@@ -334,8 +350,7 @@ class FunctionNode(StmtNode):
 
     @property
     def children(self) -> Tuple[ExprNode, ...]:
-        # return self.vars_type, (*self.vars_list)
-        return (self.type, self.name, self.argument_list, self.list)
+        return self.type, self.name, self.argument_list, self.list
 
     def __str__(self) -> str:
         return 'function'

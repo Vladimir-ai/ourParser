@@ -64,30 +64,15 @@ IMAG_NUMBER.2: /\d+j/i | FLOAT_NUMBER "j"i
 %ignore CPP_COMMENT
 %ignore C_COMMENT
 
-num: NUMBER -> literal
+num: ( HEX_NUMBER | NUMBER | OCT_NUMBER | BIN_NUMBER) -> literal
 
 !_factor_op: "+"|"-"
 
 str: ESCAPED_STRING  -> literal
 ident: CNAME
-array: ident "[" expr "]"
+array_indexing: ident "[" expr "]"
 
-ADD:     "+"
-SUB:     "-"
-MUL:     "*"
-DIV:     "/"
-AND:     "&&"
-OR:      "||"
-BIT_AND: "&"
-BIT_OR:  "|"
-GE:      ">="
-LE:      "<="
-NEQUALS: "!="
-EQUALS:  "=="
-GT:      ">"
-LT:      "<"
-
-?group: num | str | array
+?group: num | str | array_indexing
     | ident
     | call
     | "(" expr ")"
@@ -116,31 +101,37 @@ call:  ident "(" ( expr ( "," expr )* )? ")"
 
 ?expr: logical_or
 
-
-
 ?var_decl_inner: ident
     | ident "=" expr  -> assign
 
-array_declaration: ident ident "[" expr "]"
-
 vars_decl: ident var_decl_inner ( "," var_decl_inner )*
+
+array_declaration: ident ident "[" expr "]"
 
 ?simple_stmt: ident "=" expr  -> assign
     | call
+    | array_indexing "=" expr -> assign
     | expr
 
 ?for_stmt_list: vars_decl
     | ( simple_stmt ( "," simple_stmt )* )?  -> stmt_list
+
 ?for_cond: expr
     |   -> stmt_list
+
 ?body: stmt
     | ";"  -> stmt_list
 
-argument: ident ident
+?argument: array_declaration
+    | ident ident
 
 argument_list: (argument ( "," argument )*)?
 
-?stmt: ";"+
+return_type: ident | (ident ARR)
+
+function: return_type ident "(" argument_list ")" "{" stmt_list "}"
+
+?stmt: ";" -> stmt_list
     | "while" "(" expr ")" body -> while
     | vars_decl ";"
     | "if" "(" expr ")" body -> if
@@ -148,11 +139,9 @@ argument_list: (argument ( "," argument )*)?
     | "for" "(" for_stmt_list ";" for_cond ";" for_stmt_list ")" body  -> for
     | "{" stmt_list "}"
     | simple_stmt ";"
+    | function
     | array_declaration ";"
-    | array
-    | ident ident "(" argument_list ")" "{" stmt_list "}"-> function
-    | "return" expr ";" -> return
-    | "return" ";" -> return //???
+    | "return" expr? ";" -> return
 
 stmt_list: ( stmt ";"* )*
 
