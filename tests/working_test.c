@@ -52,7 +52,7 @@ int main()
     }
     b = g==g;
     b = 0x10;
-   // b = 010; //zdes umer NaN homyach'eck ¯\_(ツ)_/¯
+   // b = 010; //zdes umer NaN homyach'eck ¯\_(ツ)_/¯ homyach'eck zhivi
     b = 0o10;
     b = 0b11;
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
