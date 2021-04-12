@@ -19,7 +19,7 @@ int main()
     while(1){}
     if(1);
     if(1){}
-    ;;
+//    ;;
     func(a[a[i + 6] + b[0]]);
     7;
     p;
