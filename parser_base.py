@@ -31,11 +31,12 @@ class ASTBuilder(InlineTransformer):
         if isinstance(item, str) and item.upper() == item:
             return lambda x: x
 
-        if item in ('bin_op', ):
+        if item in ('bin_op',):
             def get_bin_op_node(*args):
                 op = BinOp(args[1].value)
                 return BinOpNode(op, args[0], args[2],
                                  **{'token': args[1], 'line': args[1].line, 'column': args[1].column})
+
             return get_bin_op_node
         else:
             def get_node(*args):
@@ -47,12 +48,15 @@ class ASTBuilder(InlineTransformer):
                     args = [args[0].value]
                 cls = eval(''.join(x.capitalize() for x in item.split('_')) + 'Node')
                 return cls(*args, **props)
+
             return get_node
 
 
-def parse(prog: str, Debug=False) -> StmtListNode:
-   parser = Lark.open("./syntax.lark", start='start', lexer='standard')#, lexer="standard")
-   prog = parser.parse(prog)
-   if Debug: print(prog)
-   prog = ASTBuilder().transform(prog)
-   return prog
+def parse(prog: str, debug=False) -> StmtListNode:
+    parser = Lark.open("./syntax.lark", start='start', lexer='standard')  # , lexer="standard")
+    prog = parser.parse(prog)
+    if debug:
+        print(prog.pretty())
+        print(prog)
+    prog = ASTBuilder().transform(prog)
+    return prog

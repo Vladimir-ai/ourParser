@@ -1,4 +1,3 @@
-%import common.NUMBER
 %import common.DIGIT
 %import common.ESCAPED_STRING
 %import common.CNAME
@@ -7,13 +6,68 @@
 %import common.C_COMMENT
 %import common.CPP_COMMENT
 %import common.LETTER
+%import common.SIGNED_NUMBER
+%import common.NUMBER
+%import common.FLOAT
+%import common.INT
+
+DEC_NUMBER: /0|[1-9][\d_]*/i
+HEX_NUMBER.2: /0x[\da-f]*/i
+OCT_NUMBER.2: /0o[0-7]*/i
+BIN_NUMBER.2 : /0b[0-1]*/i
+FLOAT_NUMBER.2: /((\d+\.[\d_]*|\.[\d_]+)(e[-+]?\d+)?|\d+(e[-+]?\d+))/i
+IMAG_NUMBER.2: /\d+j/i | FLOAT_NUMBER "j"i
+//%import common.NUMBER
+
+//num: (DEC_NUMBER | HEX_NUMBER | BIN_NUMBER | OCT_NUMBER | FLOAT | IMAG_NUMBER) -> literal
+//NAME: /[a-zA-Z_]\w*/
+//COMMENT: /#[^\n]*/
+//
+//STRING : /[ubf]?r?("(?!"").*?(?<!\\)(\\\\)*?"|'(?!'').*?(?<!\\)(\\\\)*?')/i
+//LONG_STRING: /[ubf]?r?(""".*?(?<!\\)(\\\\)*?"""|'''.*?(?<!\\)(\\\\)*?''')/is
+//
+//DEC_NUMBER: /0|[1-9][\d_]*/i
+//HEX_NUMBER.2: /0x[\da-f]*/i
+//OCT_NUMBER.2: /0o[0-7]*/i
+//BIN_NUMBER.2 : /0b[0-1]*/i
+//FLOAT_NUMBER.2: /((\d+\.[\d_]*|\.[\d_]+)(e[-+]?\d+)?|\d+(e[-+]?\d+))/i
+//IMAG_NUMBER.2: /\d+j/i | FLOAT_NUMBER "j"i
+
+//?test: or_test ("if" or_test "else" test)? | lambdef
+//?test_nocond: or_test | lambdef_nocond
+//lambdef: "lambda" [varargslist] ":" test
+//lambdef_nocond: "lambda" [varargslist] ":" test_nocond
+//?or_test: and_test ("or" and_test)*
+//?and_test: not_test ("and" not_test)*
+//?not_test: "not" not_test -> not
+//         | comparison
+//?comparison: expr (_comp_op expr)*
+//star_expr: "*" expr
+//?expr: xor_expr ("|" xor_expr)*
+//?xor_expr: and_expr ("^" and_expr)*
+//?and_expr: shift_expr ("&" shift_expr)*
+//?shift_expr: arith_expr (_shift_op arith_expr)*
+//?arith_expr: term (_add_op term)*
+//?term: factor (_mul_op factor)*
+//?factor: _factor_op factor | power
+//
+//!_factor_op: "+"|"-"|"~"
+//!_add_op: "+"|"-"
+//!_shift_op: "<<"|">>"
+//!_mul_op: "*"|"@"|"/"|"%"|"//"
+//// <> isn't actually a valid comparison operator in Python. It's here for the
+//// sake of a __future__ import described in PEP 401 (which really works :-)
+//!_comp_op: "<"|">"|"=="|">="|"<="|"<>"|"!="|"in"|"not" "in"|"is"|"is" "not"
 
 
 %ignore WS
 %ignore CPP_COMMENT
 %ignore C_COMMENT
 
-num: NUMBER  -> literal
+num: NUMBER -> literal
+
+!_factor_op: "+"|"-"
+
 str: ESCAPED_STRING  -> literal
 ident: CNAME
 array: ident "[" expr "]"
@@ -33,15 +87,16 @@ EQUALS:  "=="
 GT:      ">"
 LT:      "<"
 
-
-call:  ident "(" ( expr ( "," expr )* )? ")"
-
 ?group: num | str | array
     | ident
     | call
     | "(" expr ")"
 
-?mult: group
+call:  ident "(" ( expr ( "," expr )* )? ")"
+
+?factor: (_factor_op factor) | group
+
+?mult: factor
     | mult ( MUL | DIV ) group  -> bin_op
 
 ?add: mult
@@ -61,6 +116,8 @@ call:  ident "(" ( expr ( "," expr )* )? ")"
 
 ?expr: logical_or
 
+
+
 ?var_decl_inner: ident
     | ident "=" expr  -> assign
 
@@ -70,6 +127,7 @@ vars_decl: ident var_decl_inner ( "," var_decl_inner )*
 
 ?simple_stmt: ident "=" expr  -> assign
     | call
+    | expr
 
 ?for_stmt_list: vars_decl
     | ( simple_stmt ( "," simple_stmt )* )?  -> stmt_list
@@ -82,7 +140,7 @@ argument: ident ident
 
 argument_list: (argument ( "," argument )*)?
 
-?stmt: ";"
+?stmt: ";"+
     | "while" "(" expr ")" body -> while
     | vars_decl ";"
     | "if" "(" expr ")" body -> if
@@ -94,6 +152,7 @@ argument_list: (argument ( "," argument )*)?
     | array
     | ident ident "(" argument_list ")" "{" stmt_list "}"-> function
     | "return" expr ";" -> return
+    | "return" ";" -> return //???
 
 stmt_list: ( stmt ";"* )*
 

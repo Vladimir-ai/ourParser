@@ -4,6 +4,7 @@ from enum import Enum
 
 from lark import Token
 
+
 class KeyWords(Enum):
     RETURN = 'return'
     FOR = 'for'
@@ -13,15 +14,18 @@ class KeyWords(Enum):
     DOUBLE = 'double'
     FLOAT = 'float'
 
+
 class BaseType(Enum):
     VOID = 'void'
     INT = 'int'
     FLOAT = 'float'
     BOOL = 'bool'
 
-def checkNameAndException(name : str, text : str):
+
+def checkNameAndException(name: str, text: str):
     if name.upper() in KeyWords.__dict__:
         raise BaseException("Using keyword in name of " + text)
+
 
 class AstNode(ABC):
     def __init__(self, row: Optional[int] = None, line: Optional[int] = None, **props):
@@ -73,12 +77,26 @@ class LiteralNode(ExprNode):
         return '{0} ({1})'.format(self.literal, type(self.value).__name__)
 
 
+class FactorNode(ExprNode):
+    def __init__(self, operation: str, literal: ExprNode,
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        self.literal = literal
+        self.operation = operation
+
+    @property
+    def children(self) -> Tuple[ExprNode]:
+        return [self.literal]
+
+    def __str__(self) -> str:
+        return f'uno {self.operation}'
+
+
 class IdentNode(ExprNode):
     def __init__(self, name: str,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
         self.name = str(name)
-
 
     def __str__(self) -> str:
         return str(self.name)
@@ -257,6 +275,7 @@ class ArrayDeclarationNode(StmtNode):
     def __str__(self) -> str:
         return 'array_declaration'
 
+
 class ArrayNode(ExprNode):
     def __init__(self, name: IdentNode, value: ExprNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
@@ -273,6 +292,7 @@ class ArrayNode(ExprNode):
     def __str__(self) -> str:
         return 'array_index'
 
+
 class ArgumentNode(StmtNode):
     def __init__(self, type_var: IdentNode, name: IdentNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
@@ -281,13 +301,13 @@ class ArgumentNode(StmtNode):
         self.type_var = type_var
         self.name = name
 
-
     @property
     def children(self) -> Tuple[IdentNode, ExprNode]:
         return self.type_var, self.name
 
     def __str__(self) -> str:
         return 'argument'
+
 
 class ArgumentListNode(StmtNode):
     def __init__(self, *arguments: Tuple[ArgumentNode],
@@ -302,8 +322,9 @@ class ArgumentListNode(StmtNode):
     def __str__(self) -> str:
         return 'argument_list'
 
+
 class FunctionNode(StmtNode):
-    def __init__(self, type: IdentNode, name: IdentNode, argument_list: ArgumentListNode, stmt_list: StmtListNode ,
+    def __init__(self, type: IdentNode, name: IdentNode, argument_list: ArgumentListNode, stmt_list: StmtListNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
         self.type = type
@@ -319,17 +340,17 @@ class FunctionNode(StmtNode):
     def __str__(self) -> str:
         return 'function'
 
+
 class ReturnNode(StmtNode):
-    def __init__(self, expr : ExprNode,
+    def __init__(self, expr: Optional[ExprNode] = None,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        #checkNameAndException(str(func), "function")
+        # checkNameAndException(str(func), "function")
         self.expr = expr
 
     @property
     def children(self) -> Tuple[ExprNode, ...]:
-        # return self.func, (*self.params)
-        return (self.expr,)
+        return [self.expr] if self.expr else list()
 
     def __str__(self) -> str:
         return 'return'
