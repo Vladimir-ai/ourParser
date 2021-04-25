@@ -1,4 +1,5 @@
 import parser_base
+import semantic
 import os
 
 from tests import working_test
@@ -10,7 +11,19 @@ if __name__ == '__main__':
     # print(*parser_base.parse(prog).tree, sep=os.linesep)
     # parser_base.parse(prog)
 
-    if working_test(True):
+    if working_test(False):
         print("It's ok")
     else:
         print("It isn't ok")
+
+    tree = parser_base.parse(prog)
+    print('ast_tree:')
+    print(*tree.tree, sep=os.linesep)
+    tree.program=True
+    print('semantic_check:')
+    try:
+        scope = semantic.IdentScope()
+        tree.semantic_check(scope)
+        print(*tree.tree, sep=os.linesep)
+    except semantic.SemanticException as e:
+        print('Ошибка: {}'.format(e.message))

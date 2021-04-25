@@ -1,26 +1,48 @@
-aaaa = -2;
-int a[1];
-a[3 < 4];
-if (a < 2){
-    d = b;
-}
-if (a > 2){
-    w = w;
-} else {
-    _A = 1;
-}
+int main(int a, char b, bool c, int d[2]){
+    a = 0;
+    d[2];
+    int f = 1;
+    int h, l, e=10;
+    //-b;
+    a = b + 1;
+    if(a == 0){
+        d = 20;
+    }
 
-if (a == 2)
-    a = 3;
-else
-    b = 5;
+    for(int i = 0; i < 10; i=i+1){
+        int k = 0;
+    }
 
-while (b < 0)
-    b = b + 1;
-while (b < 0){
-    index = 1;
-    b = b - +1;
+    while(b < 0){
+
+    }
 }
+int aa[2];
+main(1,"A",2, aa);
+
+//aaaa = -2;
+//int a[1];
+//a[3 < 4];
+//if (a < 2){
+//    d = b;
+//}
+//if (a > 2){
+//    w = w;
+//} else {
+//    _A = 1;
+//}
+//
+//if (a == 2)
+//    a = 3;
+//else
+//    b = 5;
+//
+//while (b < 0)
+//    b = b + 1;
+//while (b < 0){
+//    index = 1;
+//    b = b - +1;
+//}
 
  /*for (int a = 0; a < 2; a = a + 2){
      d = 0;
