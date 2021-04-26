@@ -435,7 +435,7 @@ class ArrayDeclarationNode(StmtNode):
             scope.add_ident(ArrayDesc(str(self.name), TypeDesc.arr_from_str(str(self.type_var)), type_convert(self.value, TypeDesc.INT, self)))
         except SemanticException as e:
             self.semantic_error(e.message)
-        self.node_type = TypeDesc.VOID
+        self.node_type = TypeDesc.arr_from_str(str(self.type_var))
 
     def __str__(self) -> str:
         return 'array_declaration'

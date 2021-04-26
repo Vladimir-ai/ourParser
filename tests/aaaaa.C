@@ -35,6 +35,13 @@ d[1] = c[1] - 2;
 f = func();
 d = c;
 
+int[] function(int arr[10]){
+    int b = 10;
+    return arr;
+}
+int awd[10];
+int a[10] = function(awd);
+
 //aaaa = -2;
 //int a[1];
 //a[3 < 4];
