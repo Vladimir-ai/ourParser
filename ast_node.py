@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, Union
 from enum import Enum
 from bin_op import BinOp, BaseType
-from semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, TYPE_CONVERTIBILITY
+from semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, TYPE_CONVERTIBILITY, \
+    ArrayDesc
 
 
 class KeyWords(Enum):
@@ -155,6 +156,10 @@ class BinOpNode(ExprNode):
         self.arg1.semantic_check(scope)
         self.arg2.semantic_check(scope)
 
+        if self.arg1.node_ident is not None and self.arg2.node_ident is not None \
+            and type(self.arg1.node_ident) != type(self.arg1.node_ident):
+            self.semantic_error("BBBBBBBBBBBBBB")
+
         if self.arg1.node_type.is_simple or self.arg2.node_type.is_simple:
             compatibility = BIN_OP_TYPE_COMPATIBILITY[self.op]
             args_types = (self.arg1.node_type.base_type, self.arg2.node_type.base_type)
@@ -194,10 +199,6 @@ class VarsDeclNode(StmtNode):
     def __init__(self, vars_type: IdentNode, *vars_list: Tuple[AstNode, ...],
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        for var in vars_list:
-            checkNameIsKeywordAndRaiseException(str(var), "var")
-        if not str(vars_type).upper() in BaseType.__dict__:
-            raise Exception("Using keyword in name of type var")
         self.vars_type = vars_type
         self.vars_list = vars_list
 
@@ -212,7 +213,9 @@ class VarsDeclNode(StmtNode):
         for var in self.vars_list:
             var_node: IdentNode = var.var if isinstance(var, AssignNode) else var
             try:
-                scope.add_ident(IdentDesc(var_node.name, TypeDesc.from_str(str(self.vars_type))))
+                bbb = TypeDesc.from_str(str(self.vars_type))
+                aaa = IdentDesc(var_node.name, bbb)
+                scope.add_ident(aaa)
             except SemanticException as e:
                 var_node.semantic_error(e.message)
             var.semantic_check(scope)
@@ -281,7 +284,6 @@ class AssignNode(StmtNode):
     def __init__(self, var: IdentNode, val: ExprNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        checkNameIsKeywordAndRaiseException(str(var), "var")
         self.var = var
         self.val = val
 
@@ -292,6 +294,11 @@ class AssignNode(StmtNode):
     def semantic_check(self, scope: IdentScope) -> None:
         self.var.semantic_check(scope)
         self.val.semantic_check(scope)
+
+        if self.var.node_ident is not None and self.val.node_ident is not None \
+                and type(self.var.node_ident) != type(self.val.node_ident):
+            self.semantic_error("AAAAAAAA")
+
         self.val = type_convert(self.val, self.var.node_type, self, 'присваиваемое значение')
         self.node_type = self.var.node_type
 
@@ -402,12 +409,11 @@ class WhileNode(StmtNode):
 
 
 class ArrayDeclarationNode(StmtNode):
-    def __init__(self, type_var: IdentNode, vars: IdentNode, value: ExprNode,
+    def __init__(self, type_var: IdentNode, name: IdentNode, value: ExprNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        checkNameIsKeywordAndRaiseException(str(vars), "array")
         self.type_var = type_var
-        self.name = vars
+        self.name = name
         self.value = value
 
     @property
@@ -416,11 +422,17 @@ class ArrayDeclarationNode(StmtNode):
         return (self.type_var, self.name, self.value)
 
     def semantic_check(self, scope: IdentScope) -> None:
+        if str(self.name).upper() in BaseType.__dict__:
+            self.semantic_error("Using keyword in name of array")
+
         if str(self.type_var).upper() not in BaseType.__dict__:
             self.semantic_error(f"Unknown type {self.type_var}")
 
         try:
-            scope.add_ident(IdentDesc(str(self.name), TypeDesc.from_str(str(self.type_var))))
+            self.value.semantic_check(scope)
+            typeDesc = TypeDesc.from_str(str(self.type_var))
+            typeDesc.array = True
+            scope.add_ident(ArrayDesc(str(self.name), typeDesc, type_convert(self.value, TypeDesc.INT, self)))
         except SemanticException as e:
             self.semantic_error(e.message)
         self.node_type = TypeDesc.VOID
@@ -433,7 +445,6 @@ class ArrayIndexingNode(ExprNode):
     def __init__(self, name: IdentNode, value: ExprNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
-        checkNameIsKeywordAndRaiseException(str(name), "array")
         self.name = name
         self.value = value
 
@@ -443,8 +454,13 @@ class ArrayIndexingNode(ExprNode):
         return (self.name, self.value)
 
     def semantic_check(self, scope: IdentScope) -> None:
+        if str(self.name).upper() in BaseType.__dict__:
+            self.semantic_error("Using keyword in name of array")
         self.name.semantic_check(scope)
         self.value.semantic_check(scope) #check return type
+        curr_ident = scope.get_ident(str(self.name))
+        if not isinstance(curr_ident, ArrayDesc):
+            self.semantic_error(f"{self.name} is not an array")
 
     def __str__(self) -> str:
         return 'array_index'
@@ -499,6 +515,10 @@ class ReturnTypeNode(AstNode):
     def children(self) -> Tuple[ExprNode, ...]:
         return [self.type]
 
+    def semantic_check(self, scope: IdentScope) -> None:
+        if self.type is None:
+            self.semantic_error(f"Неизвестный тип: {type}")
+
     def __str__(self) -> str:
         return f'return type {"array" if self.isArr is not None else ""}'
 
@@ -532,7 +552,11 @@ class FunctionNode(StmtNode):
             params.append(TypeDesc.from_str(str(param.type_var)))
 
         type_ = TypeDesc(None, TypeDesc.from_str(str(self.type.type)), tuple(params))
-        func_ident = IdentDesc(self.name.name, type_)
+        if self.type.isArr:
+            type_.array = True
+            func_ident = ArrayDesc(self.name.name, type_, 1)
+        else:
+            func_ident = IdentDesc(self.name.name, type_)
         scope.func = func_ident
         self.name.node_type = type_
         try:
@@ -611,7 +635,7 @@ def type_convert(expr: ExprNode, type_: TypeDesc, except_node: Optional[AstNode]
     """Метод преобразования ExprNode узла AST-дерева к другому типу
     :param expr: узел AST-дерева
     :param type_: требуемый тип
-    :param except_node: узел, о которого будет исключение
+    :param except_node: узел, у которого будет исключение
     :param comment: комментарий
     :return: узел AST-дерева c операцией преобразования
     """
@@ -628,4 +652,5 @@ def type_convert(expr: ExprNode, type_: TypeDesc, except_node: Optional[AstNode]
         (except_node if except_node else expr).semantic_error('Тип {0}{2} не конвертируется в {1}'.format(
             expr.node_type, type_, ' ({})'.format(comment) if comment else ''
         ))
+
 

@@ -102,16 +102,23 @@ class TypeDesc:
         self.base_type = base_type_
         self.return_type = return_type
         self.params = params
+        self.array = False
 
     @property
     def func(self) -> bool:
         return self.return_type is not None
 
     @property
+    def is_arr(self) -> bool:
+        return self.array
+
+    @property
     def is_simple(self) -> bool:
         return not self.func
 
     def __eq__(self, other: 'TypeDesc'):
+        if self.array != other.array:
+            return False
         if self.func != other.func:
             return False
         if not self.func:
@@ -167,6 +174,16 @@ class IdentDesc:
 
     def __str__(self) -> str:
         return '{}, {}, {}'.format(self.type, self.scope, 'built-in' if self.built_in else self.index)
+
+
+class ArrayDesc(IdentDesc):
+
+    def __init__(self, name: str, type_: TypeDesc, size: int, scope: ScopeType = ScopeType.GLOBAL, index: int = 0) -> None:
+        super().__init__(name, type_, scope, index)
+        self.size = size
+
+    def __str__(self) -> str:
+        return f'{self.type} array with size {self.size}, {self.scope}, {"built-in" if self.built_in else self.index}'
 
 
 class IdentScope:

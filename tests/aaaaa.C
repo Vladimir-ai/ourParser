@@ -1,24 +1,34 @@
-int main(int a, char b, bool c, int d[2]){
-    a = 0;
-    d[2];
-    int f = 1;
-    int h, l, e=10;
-    //-b;
-    a = b + 1;
-    if(a == 0){
-        d = 20;
-    }
-
-    for(int i = 0; i < 10; i=i+1){
-        int k = 0;
-    }
-
-    while(b < 0){
-
-    }
-}
-int aa[2];
-main(1,"A",2, aa);
+//int main(int a, char b, bool c, int d[2]){
+//    a = 0;
+//    d[2];
+//    int f = 1;
+//    int h, l, e=10;
+//    //-b;
+//    a = b + 1;
+//    if(a == 0){
+//        d = 20;
+//    }
+//
+//    for(int i = 0; i < 10; i=i+1){
+//        int k = 0;
+//    }
+//
+//    while(b < 0){
+//
+//    }
+//    return a;
+//}
+//int aa[2];
+//int k = main(1,"A",2, aa);
+//
+//float[] func(){
+//    int g = 0;
+//    float a[2];
+//    return a;
+//}
+int d[2];
+int c[2];
+d = c - 2;
 
 //aaaa = -2;
 //int a[1];
