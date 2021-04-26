@@ -527,7 +527,7 @@ class ReturnTypeNode(AstNode):
 
 
 class FunctionNode(StmtNode):
-    def __init__(self, type: IdentNode, name: IdentNode, argument_list: ArgumentListNode, stmt_list: StmtListNode,
+    def __init__(self, type: ReturnTypeNode, name: IdentNode, argument_list: ArgumentListNode, stmt_list: StmtListNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
         self.type = type
