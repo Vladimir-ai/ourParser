@@ -30,3 +30,13 @@ class BaseType(Enum):
 
     def __str__(self):
         return self.value
+
+
+class ArrayType(Enum):
+    INT = 'int'
+    CHAR = 'char'
+    FLOAT = 'float'
+    BOOL = 'bool'
+
+    def __str__(self):
+        return f"array {self.value}"

@@ -1,10 +1,11 @@
 from enum import Enum
 from typing import Optional, Tuple, Any, Dict
 
-from ast_node import BinOp, BaseType
+from utils import BinOp, BaseType, ArrayType
 
 VOID, INT, FLOAT, BOOL, CHAR = BaseType.VOID, BaseType.INT, BaseType.FLOAT, BaseType.BOOL, BaseType.CHAR
-
+INT_ARRAY, FLOAT_ARRAY, BOOL_ARRAY, CHAR_ARRAY = \
+    ArrayType.INT, ArrayType.FLOAT, ArrayType.BOOL, ArrayType.CHAR
 
 TYPE_CONVERTIBILITY = {
     INT: (FLOAT, BOOL),
@@ -97,12 +98,17 @@ class TypeDesc:
     BOOL: 'TypeDesc'
     CHAR: 'TypeDesc'
 
+    INT_ARRAY: 'TypeDesc'
+    FLOAT_ARRAY: 'TypeDesc'
+    BOOL_ARRAY: 'TypeDesc'
+    CHAR_ARRAY: 'TypeDesc'
+
     def __init__(self, base_type_: Optional[BaseType] = None,
-                 return_type: Optional['TypeDesc'] = None, params: Optional[Tuple['TypeDesc']] = None) -> None:
+                 return_type: Optional['TypeDesc'] = None, params: Optional[Tuple['TypeDesc']] = None, isArr: bool = False) -> None:
         self.base_type = base_type_
         self.return_type = return_type
         self.params = params
-        self.array = False
+        self.array = isArr
 
     @property
     def func(self) -> bool:
@@ -114,11 +120,9 @@ class TypeDesc:
 
     @property
     def is_simple(self) -> bool:
-        return not self.func
+        return not self.func or not self.array
 
     def __eq__(self, other: 'TypeDesc'):
-        if self.array != other.array:
-            return False
         if self.func != other.func:
             return False
         if not self.func:
@@ -138,10 +142,22 @@ class TypeDesc:
         return getattr(TypeDesc, base_type_.name)
 
     @staticmethod
+    def from_arr_type(arr_type: ArrayType) -> 'TypeDesc':
+        return getattr(TypeDesc, f"{arr_type.name}_ARRAY")
+
+    @staticmethod
     def from_str(str_decl: str) -> 'TypeDesc':
         try:
             base_type_ = BaseType(str_decl)
             return TypeDesc.from_base_type(base_type_)
+        except:
+            raise SemanticException('Неизвестный тип {}'.format(str_decl))
+
+    @staticmethod
+    def arr_from_str(str_decl: str) -> 'TypeDesc':
+        try:
+            arr_type_ = ArrayType(str_decl)
+            return TypeDesc.from_arr_type(arr_type_)
         except:
             raise SemanticException('Неизвестный тип {}'.format(str_decl))
 
@@ -162,6 +178,11 @@ class TypeDesc:
 for base_type in BaseType:
     setattr(TypeDesc, base_type.name, TypeDesc(base_type))
 
+for array_type in ArrayType:
+    tmp = TypeDesc(array_type)
+    tmp.array = True
+    setattr(TypeDesc, f"{array_type.name}_ARRAY", tmp)
+
 
 class IdentDesc:
 
@@ -181,6 +202,12 @@ class ArrayDesc(IdentDesc):
     def __init__(self, name: str, type_: TypeDesc, size: int, scope: ScopeType = ScopeType.GLOBAL, index: int = 0) -> None:
         super().__init__(name, type_, scope, index)
         self.size = size
+
+    def toIdentDesc(self):
+        name = str(self.type.base_type).replace("array ", "")
+        tp = self.type.from_str(name)
+        k = IdentDesc(self.name, tp, self.scope, self.index)
+        return k
 
     def __str__(self) -> str:
         return f'{self.type} array with size {self.size}, {self.scope}, {"built-in" if self.built_in else self.index}'

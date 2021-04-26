@@ -21,14 +21,19 @@
 //int aa[2];
 //int k = main(1,"A",2, aa);
 //
-//float[] func(){
-//    int g = 0;
-//    float a[2];
-//    return a;
-//}
+float[] func(){
+    int g = 0;
+    float a[2];
+}
+
 int d[2];
 int c[2];
-d = c - 2;
+float f[2];
+float r[2];
+f[1] = r[0];
+d[1] = c[1] - 2;
+f = func();
+d = c;
 
 //aaaa = -2;
 //int a[1];

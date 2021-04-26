@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, Union
 from enum import Enum
-from bin_op import BinOp, BaseType
+from utils import BinOp, BaseType
 from semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, TYPE_CONVERTIBILITY, \
     ArrayDesc
 
@@ -182,6 +182,10 @@ class BinOpNode(ExprNode):
                         self.node_type = TypeDesc.from_base_type(compatibility[args_types])
                         return
 
+        if not self.arg1.node_type.is_simple and not self.arg2.node_type.is_simple:
+            if self.arg1.node_type.base_type == self.arg2.node_type.base_type:
+                return
+
         self.semantic_error("Оператор {} не применим к типам ({}, {})".format(
             self.op, self.arg1.node_type, self.arg2.node_type
         ))
@@ -213,9 +217,7 @@ class VarsDeclNode(StmtNode):
         for var in self.vars_list:
             var_node: IdentNode = var.var if isinstance(var, AssignNode) else var
             try:
-                bbb = TypeDesc.from_str(str(self.vars_type))
-                aaa = IdentDesc(var_node.name, bbb)
-                scope.add_ident(aaa)
+                scope.add_ident(IdentDesc(var_node.name, TypeDesc.from_str(str(self.vars_type))))
             except SemanticException as e:
                 var_node.semantic_error(e.message)
             var.semantic_check(scope)
@@ -430,9 +432,7 @@ class ArrayDeclarationNode(StmtNode):
 
         try:
             self.value.semantic_check(scope)
-            typeDesc = TypeDesc.from_str(str(self.type_var))
-            typeDesc.array = True
-            scope.add_ident(ArrayDesc(str(self.name), typeDesc, type_convert(self.value, TypeDesc.INT, self)))
+            scope.add_ident(ArrayDesc(str(self.name), TypeDesc.arr_from_str(str(self.type_var)), type_convert(self.value, TypeDesc.INT, self)))
         except SemanticException as e:
             self.semantic_error(e.message)
         self.node_type = TypeDesc.VOID
@@ -461,6 +461,9 @@ class ArrayIndexingNode(ExprNode):
         curr_ident = scope.get_ident(str(self.name))
         if not isinstance(curr_ident, ArrayDesc):
             self.semantic_error(f"{self.name} is not an array")
+
+        aaa = scope.get_ident(str(self.name)).toIdentDesc()
+        self.node_type = aaa.type
 
     def __str__(self) -> str:
         return 'array_index'
@@ -553,7 +556,6 @@ class FunctionNode(StmtNode):
 
         type_ = TypeDesc(None, TypeDesc.from_str(str(self.type.type)), tuple(params))
         if self.type.isArr:
-            type_.array = True
             func_ident = ArrayDesc(self.name.name, type_, 1)
         else:
             func_ident = IdentDesc(self.name.name, type_)
