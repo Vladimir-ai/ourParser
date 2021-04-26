@@ -92,7 +92,7 @@ class LiteralNode(ExprNode):
         if isinstance(self.value, bool):
             self.node_type = TypeDesc.BOOL
         # проверка должна быть позже bool, т.к. bool наследник от int
-        elif isinstance(self.value, str):
+        elif isinstance(self.value, str) and len(self.value) == 1:
             self.node_type = TypeDesc.CHAR
         elif isinstance(self.value, int):
             self.node_type = TypeDesc.INT
@@ -462,8 +462,7 @@ class ArrayIndexingNode(ExprNode):
         if not isinstance(curr_ident, ArrayDesc):
             self.semantic_error(f"{self.name} is not an array")
 
-        aaa = scope.get_ident(str(self.name)).toIdentDesc()
-        self.node_type = aaa.type
+        self.node_type = scope.get_ident(str(self.name)).toIdentDesc().type
 
     def __str__(self) -> str:
         return 'array_index'
@@ -552,7 +551,11 @@ class FunctionNode(StmtNode):
         for param in self.argument_list.children:
             # при проверке параметров происходит их добавление в scope
             param.semantic_check(scope)
-            params.append(TypeDesc.from_str(str(param.type_var)))
+            if isinstance(param, ArrayDeclarationNode):
+                params.append(TypeDesc.arr_from_str(str(param.type_var)))
+            else:
+                params.append(TypeDesc.from_str(str(param.type_var)))
+
         if self.type.isArr:
             type_ = TypeDesc(None, TypeDesc.arr_from_str(str(self.type.type)), tuple(params))
             func_ident = ArrayDesc(self.name.name, type_, 1)
