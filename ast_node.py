@@ -553,11 +553,11 @@ class FunctionNode(StmtNode):
             # при проверке параметров происходит их добавление в scope
             param.semantic_check(scope)
             params.append(TypeDesc.from_str(str(param.type_var)))
-
-        type_ = TypeDesc(None, TypeDesc.from_str(str(self.type.type)), tuple(params))
         if self.type.isArr:
+            type_ = TypeDesc(None, TypeDesc.arr_from_str(str(self.type.type)), tuple(params))
             func_ident = ArrayDesc(self.name.name, type_, 1)
         else:
+            type_ = TypeDesc(None, TypeDesc.from_str(str(self.type.type)), tuple(params))
             func_ident = IdentDesc(self.name.name, type_)
         scope.func = func_ident
         self.name.node_type = type_

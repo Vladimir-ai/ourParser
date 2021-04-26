@@ -24,6 +24,7 @@
 float[] func(){
     int g = 0;
     float a[2];
+    return a;
 }
 
 int d[2];
