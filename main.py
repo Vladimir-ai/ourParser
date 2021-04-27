@@ -12,7 +12,7 @@ if __name__ == '__main__':
     # parser_base.parse(prog)
 
     if working_test(False):
-        print("All tests are passed")
+        print("All tests have been passed")
     else:
         print("It isn't ok")
 

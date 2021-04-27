@@ -25,10 +25,10 @@ class AstNode(ABC):
 
     init_action: Callable[['AstNode'], None] = None
 
-    def __init__(self, row: Optional[int] = None, line: Optional[int] = None, **props):
+    def __init__(self, line: Optional[int] = None, column: Optional[int] = None, **props):
         super().__init__()
-        self.row = row
         self.line = line
+        self.column = column
         for k, v in props.items():
             setattr(self, k, v)
         self.node_type: Optional[TypeDesc] = None
@@ -51,7 +51,7 @@ class AstNode(ABC):
         return str(self) + (' : ' + r if r else '')
 
     def semantic_error(self, message: str):
-        raise SemanticException(message, self.row, self.line)
+        raise SemanticException(message, self.line, self.column)
 
     def semantic_check(self, scope: IdentScope) -> None:
         pass
@@ -83,8 +83,8 @@ EMPTY_IDENT = IdentDesc('', TypeDesc.VOID)
 
 class LiteralNode(ExprNode):
     def __init__(self, literal: str,
-                 row: Optional[int] = None, line: Optional[int] = None, **props):
-        super().__init__(row=row, line=line, **props)
+                 line: Optional[int] = None, column: Optional[int] = None, **props):
+        super().__init__(line=line, column=column, **props)
         self.literal = literal
         self.value = eval(literal)
 

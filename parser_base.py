@@ -35,7 +35,7 @@ class ASTBuilder(InlineTransformer):
             def get_bin_op_node(*args):
                 op = BinOp(args[1].value)
                 return BinOpNode(op, args[0], args[2],
-                                 **{'token': args[1], 'line': args[1].line, 'column': args[1].column})
+                                 **{'token': args[1], 'line': args[1].column, 'column': args[1].column})
 
             return get_bin_op_node
         else:
@@ -53,7 +53,7 @@ class ASTBuilder(InlineTransformer):
 
 
 def parse(prog: str, debug=False) -> StmtListNode:
-    parser = Lark.open("./syntax.lark", start='start', lexer='standard')  # , lexer="standard")
+    parser = Lark.open("./syntax.lark", start='start', lexer='standard', propagate_positions=True)  # , lexer="standard")
     prog = parser.parse(prog)
     if debug:
         print(prog.pretty())
