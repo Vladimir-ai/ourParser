@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Optional, Tuple, Any, Dict
 
+import parser_base
 from utils import BinOp, BaseType, ArrayType
 
 VOID, INT, FLOAT, BOOL, CHAR = BaseType.VOID, BaseType.INT, BaseType.FLOAT, BaseType.BOOL, BaseType.CHAR
@@ -9,7 +10,7 @@ INT_ARRAY, FLOAT_ARRAY, BOOL_ARRAY, CHAR_ARRAY = \
 
 TYPE_CONVERTIBILITY = {
     INT: (FLOAT, BOOL),
-    FLOAT: (),
+    FLOAT: BOOL,
     BOOL: (INT, CHAR),
     CHAR: (INT, BOOL)
 }
@@ -305,6 +306,20 @@ def can_type_convert_to(from_type: TypeDesc, to_type: TypeDesc) -> bool:
     if not from_type.is_simple or not to_type.is_simple:
         return False
     return from_type.base_type in TYPE_CONVERTIBILITY and to_type.base_type in TYPE_CONVERTIBILITY[to_type.base_type]
+
+
+def get_default_scope() -> IdentScope:
+    BUILT_IN_FUNCTIONS = '''void print_int(int var){}
+    void print_float(float var){}
+    void print_char(char var){}
+    void print_bool(bool var){}'''
+    prog = parser_base.parse(BUILT_IN_FUNCTIONS)
+    scope = IdentScope()
+    prog.semantic_check(scope)
+    for name, ident in scope.idents.items():
+        ident.built_in = True
+    scope.var_index = 0
+    return scope
 
 
 

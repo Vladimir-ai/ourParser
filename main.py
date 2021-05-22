@@ -22,7 +22,7 @@ if __name__ == '__main__':
     tree.program=True
     print('semantic_check:')
     try:
-        scope = semantic.IdentScope()
+        scope = semantic.get_default_scope()
         tree.semantic_check(scope)
         print(*tree.tree, sep=os.linesep)
     except semantic.SemanticException as e:

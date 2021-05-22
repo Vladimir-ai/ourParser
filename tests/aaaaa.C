@@ -17,6 +17,7 @@ int main(int a, char b, bool c, int d[2]){
     }
     return a;
 }
+
 int aa[2];
 int k = main(1,"A",2, aa);
 
@@ -39,10 +40,15 @@ int[] function(int arr[10]){
     int b = 10;
     return arr;
 }
+
 int awd[10];
 int a[10] = function(awd);
+float aawdaw[10];
+float b = 10;
+aawdaw[1] = 3.0;
 
-//aaaa = -2;
+int aaaa = 0x89;
+print_int(aaaa);
 //int a[1];
 //a[3 < 4];
 //if (a < 2){

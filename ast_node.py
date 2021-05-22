@@ -5,6 +5,8 @@ from utils import BinOp, BaseType
 from semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, TYPE_CONVERTIBILITY, \
     ArrayDesc
 
+from code_generator import CodeGenerator
+
 
 class KeyWords(Enum):
     RETURN = 'return'
@@ -39,7 +41,7 @@ class AstNode(ABC):
         return ()
 
     @abstractmethod
-    def __str__(self) -> str:
+    def __str__(self) -> (str, int):
         pass
 
     def to_str_full(self):
@@ -54,6 +56,9 @@ class AstNode(ABC):
         raise SemanticException(message, self.line, self.column)
 
     def semantic_check(self, scope: IdentScope) -> None:
+        pass
+
+    def to_llvm(self) -> str:
         pass
 
     @property
@@ -378,6 +383,13 @@ class StmtListNode(StmtNode):
         for expr in self.exprs:
             expr.semantic_check(scope)
         self.node_type = TypeDesc.VOID
+
+    def to_llvm(self) -> (str, int):
+        code = ""
+        for child in self.children:
+            new_code, ret = child.to_llvm()
+            code += new_code
+        return code
 
     def __str__(self) -> str:
         return '...'
