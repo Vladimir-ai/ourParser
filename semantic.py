@@ -10,7 +10,7 @@ INT_ARRAY, FLOAT_ARRAY, BOOL_ARRAY, CHAR_ARRAY = \
 
 TYPE_CONVERTIBILITY = {
     INT: (FLOAT, BOOL),
-    FLOAT: BOOL,
+    FLOAT: (BOOL),
     BOOL: (INT, CHAR),
     CHAR: (INT, BOOL)
 }
@@ -313,11 +313,14 @@ def get_default_scope() -> IdentScope:
     void print_float(float var){}
     void print_char(char var){}
     void print_bool(bool var){}'''
+
     prog = parser_base.parse(BUILT_IN_FUNCTIONS)
     scope = IdentScope()
     prog.semantic_check(scope)
+
     for name, ident in scope.idents.items():
         ident.built_in = True
+
     scope.var_index = 0
     return scope
 

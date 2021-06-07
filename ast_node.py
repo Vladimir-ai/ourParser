@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, Union
 from enum import Enum
-from utils import BinOp, BaseType
+from utils import BinOp, BaseType, getLLVMtype, getBinOp, getConvOp
 from semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, TYPE_CONVERTIBILITY, \
     ArrayDesc
 
@@ -58,7 +58,7 @@ class AstNode(ABC):
     def semantic_check(self, scope: IdentScope) -> None:
         pass
 
-    def to_llvm(self) -> str:
+    def to_llvm(self, gen: CodeGenerator):
         pass
 
     @property
@@ -79,9 +79,12 @@ class AstNode(ABC):
     def __getitem__(self, index):
         return self.children[index] if index < len(self.children) else None
 
+class StmtListNode:
+    pass
 
 class ExprNode(AstNode):
-    pass
+    def load(self, gen: CodeGenerator) -> str:
+        pass
 
 EMPTY_IDENT = IdentDesc('', TypeDesc.VOID)
 
@@ -105,6 +108,12 @@ class LiteralNode(ExprNode):
             self.node_type = TypeDesc.FLOAT
         else:
             self.semantic_error('Неизвестный тип {} для {}'.format(type(self.value), self.value))
+
+    def load(self, gen: CodeGenerator) -> str:
+        if self.node_type.base_type == BaseType.CHAR:
+            return ord(self.value)
+
+        return self.value
 
     def __str__(self) -> str:
         return '{0} ({1})'.format(self.literal, type(self.value).__name__)
@@ -141,6 +150,11 @@ class IdentNode(ExprNode):
         self.node_type = ident.type
         self.node_ident = ident
 
+    def load(self, gen:CodeGenerator) -> str:
+        gen.add(f"%{self.name}.{gen.getVarIndex(self.name)} = load {getLLVMtype(self.node_type.base_type)}, {getLLVMtype(self.node_type.base_type)}* %{self.name}")
+        gen.addVarIndex(self.name)
+        return f"%{self.name}.{gen.getVarIndex(self.name) - 1}"
+
     def __str__(self) -> str:
         return str(self.name)
 
@@ -173,7 +187,7 @@ class BinOpNode(ExprNode):
                 return
 
             if self.arg2.node_type.base_type in TYPE_CONVERTIBILITY:
-                for arg2_type in TYPE_CONVERTIBILITY[self.arg2.node_type.base_type]:
+                for arg2_type in TYPE_CONVERTIBILITY:
                     args_types = (self.arg1.node_type.base_type, arg2_type)
                     if args_types in compatibility:
                         self.arg2 = type_convert(self.arg2, TypeDesc.from_base_type(arg2_type))
@@ -194,6 +208,20 @@ class BinOpNode(ExprNode):
         self.semantic_error("Оператор {} не применим к типам ({}, {})".format(
             self.op, self.arg1.node_type, self.arg2.node_type
         ))
+
+    def load(self, gen: CodeGenerator) -> str:
+
+        arg1 = self.arg1.load(gen)
+        arg2 = self.arg2.load(gen)
+
+        ret = f"%{gen.getTempVar()}"
+        gen.add(f"{ret} = {getBinOp(self.op, self.arg1.node_type.base_type)} {getLLVMtype(self.arg1.node_type.base_type)} "
+                f"{arg1}, {arg2}")
+        gen.addTempVarIndex()
+        return ret
+
+    def to_llvm(self, gen: CodeGenerator):
+        pass #TODO maybe not
 
     def __str__(self) -> str:
         return str(self.op.value)
@@ -227,6 +255,17 @@ class VarsDeclNode(StmtNode):
                 var_node.semantic_error(e.message)
             var.semantic_check(scope)
         self.node_type = TypeDesc.VOID
+
+    def to_llvm(self, gen: CodeGenerator):
+        val = "0" if BaseType(self.vars_type.name) != BaseType.FLOAT else "0.0"
+        for node in self.vars_list:
+            if isinstance(node, AssignNode):
+                gen.add(f"%{node.var.name} = alloca {getLLVMtype(self.vars_type.name)}")
+                gen.add(f"store {getLLVMtype(self.vars_type.name)} {val}, {getLLVMtype(self.vars_type.name)}* %{node.var.name}")
+                node.to_llvm(gen)
+            if isinstance(node, IdentNode):
+                gen.add(f"%{node.name} = alloca {getLLVMtype(self.vars_type.name)}")
+                gen.add(f"store {getLLVMtype(self.vars_type.name)} {val}, {getLLVMtype(self.vars_type.name)}* %{node.name}")
 
     def __str__(self) -> str:
         return 'var'
@@ -282,6 +321,27 @@ class CallNode(StmtNode):
             self.func.node_ident = func
             self.node_type = func.type.return_type
 
+    def to_llvm(self, gen: CodeGenerator):
+        if (len(self.params) == 1):
+            var0 = self.params[0].load(gen)
+
+            if self.func.name == "print_float" and self.params[0].node_type.base_type == BaseType.FLOAT:
+                gen.add(f"call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
+                        f"([4 x i8], [4 x i8]* @formatFloat, i32 0, i32 0), double {var0})")
+
+                gen.addTempVarIndex()
+
+            elif self.func.name == "print_int" and self.params[0].node_type.base_type == BaseType.INT:
+                gen.add(f"call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
+                        f"([4 x i8], [4 x i8]* @formatInt, i32 0, i32 0), i32 {var0})")
+
+                gen.addTempVarIndex()
+
+            elif self.func.name == "print_char" and self.params[0].node_type.base_type == BaseType.CHAR:
+                gen.add(f"call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
+                        f"([4 x i8], [4 x i8]* @formatChar, i32 0, i32 0), i8 {var0})")
+                gen.addTempVarIndex()
+        #TODO for multiple vars
 
     def __str__(self) -> str:
         return 'call'
@@ -304,11 +364,28 @@ class AssignNode(StmtNode):
 
         if self.var.node_ident is not None and self.val.node_ident is not None \
                 and type(self.var.node_ident) != type(self.val.node_ident):
-            self.semantic_error("AAAAAAAA")
+            self.semantic_error("incompatible types")
 
         self.val = type_convert(self.val, self.var.node_type, self, 'присваиваемое значение')
         self.node_type = self.var.node_type
 
+    def to_llvm(self, gen: CodeGenerator) -> None:
+        add = "fadd" if self.node_type.base_type == BaseType.FLOAT else "add"
+        if isinstance(self.val, LiteralNode):
+            gen.add(f"%{self.var.name}.{gen.getVarIndex(self.var.name)} = {add} {getLLVMtype(self.node_type.base_type)} "
+                    f"{0.0 if self.node_type.base_type == BaseType.FLOAT else 0}, "
+                    f"{self.val.value if self.node_type.base_type != BaseType.CHAR else ord(self.val.value)}")
+
+            gen.addVarIndex(self.var.name)
+            gen.add(f"store {getLLVMtype(self.node_type.base_type)} %{self.var.name}.{gen.getVarIndex(self.var.name) - 1}, "
+                    f"{getLLVMtype(self.node_type.base_type)}* %{self.var.name}")
+
+        elif isinstance(self.val, ExprNode):
+            res = self.val.load(gen)
+            gen.add(f"store {getLLVMtype(self.val.node_type.base_type)} {res}, "
+                f"{getLLVMtype(self.var.node_type.base_type)}* %{self.var.name}")
+
+        #TODO
     def __str__(self) -> str:
         return '='
 
@@ -333,13 +410,33 @@ class IfNode(StmtNode):
             self.else_stmt.semantic_check(IdentScope(scope))
         self.node_type = TypeDesc.VOID
 
+    def to_llvm(self, gen: CodeGenerator):
+        condRes = self.cond.load(gen)
+        eqLabel = f"IfTrue.0.{gen.getVarIndex('if')}"
+        neqLabel = f"IfFalse.0.{gen.getVarIndex('if')}"
+        resLabel = f"IfEnd.0.{gen.getVarIndex('if')}"
+        gen.addVarIndex('if')
+
+        gen.add(f"br i1 {condRes}, label %{eqLabel}, label %{neqLabel}\n")
+        gen.add(f"{eqLabel}:")
+
+        self.then_stmt.to_llvm(gen)
+        gen.add(f"br label %{resLabel}")
+
+        if self.else_stmt is not None:
+            gen.add(f"\n{neqLabel}:")
+            self.else_stmt.to_llvm(gen)
+            gen.add(f"br label %{resLabel}")
+
+        gen.add(f"\n{resLabel}:")
+
     def __str__(self) -> str:
         return 'if'
 
 
 class ForNode(AstNode):
-    def __init__(self, init: Union[StmtNode, None], cond: Union[ExprNode, StmtNode, None],
-                 step: Union[StmtNode, None], body: Union[StmtNode, None] = None,
+    def __init__(self, init: StmtListNode, cond: ExprNode,
+                 step: StmtListNode, body: Union[StmtNode, None] = None,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
         self.init = init if init else _empty
@@ -361,6 +458,34 @@ class ForNode(AstNode):
         self.step.semantic_check(scope)
         self.body.semantic_check(IdentScope(scope))
         self.node_type = TypeDesc.VOID
+
+    def to_llvm(self, gen: CodeGenerator):
+        varIndex = gen.getVarIndex('for')
+        forHeader = f"for.head.{varIndex}"
+        forCond = f"for.cond.{varIndex}"
+        forBody = f"for.body.{varIndex}"
+        forHatch = f"for.hatch.{varIndex}"
+        forExit = f"for.exit.{varIndex}"
+
+        gen.add(f"br label %{forHeader}\n")
+        gen.add(f"{forHeader}:")
+        self.init.to_llvm(gen)
+        gen.add(f"br label %{forCond}")
+
+        gen.add(f"{forCond}:") #for condition
+        condRes = self.cond.load(gen)
+
+        gen.add(f"br i1 {condRes}, label %{forBody}, label %{forExit}\n")
+
+        gen.add(f"{forBody}:") #for body
+        self.body.to_llvm(gen)
+        gen.add(f"br label %{forHatch}\n")
+
+        gen.add(f"{forHatch}:")
+        self.step.to_llvm(gen)
+        gen.add(f"br label %{forCond}\n")
+
+        gen.add(f"{forExit}:")
 
     def __str__(self) -> str:
         return 'for'
@@ -384,12 +509,9 @@ class StmtListNode(StmtNode):
             expr.semantic_check(scope)
         self.node_type = TypeDesc.VOID
 
-    def to_llvm(self) -> (str, int):
-        code = ""
+    def to_llvm(self, gen: CodeGenerator):
         for child in self.children:
-            new_code, ret = child.to_llvm()
-            code += new_code
-        return code
+            child.to_llvm(gen)
 
     def __str__(self) -> str:
         return '...'
@@ -417,6 +539,24 @@ class WhileNode(StmtNode):
         self.cond = type_convert(self.cond, TypeDesc.BOOL, None, 'условие')
         self.stmt_list.semantic_check(IdentScope(scope))
         self.node_type = TypeDesc.VOID
+
+    def to_llvm(self, gen: CodeGenerator):
+        condLabel = f"whihe.cond.{gen.getVarIndex('while')}"
+        bodyLabel = f"whihe.body.{gen.getVarIndex('while')}"
+        exitLabel = f"while.exit.{gen.getVarIndex('while')}"
+
+        gen.addVarIndex('while')
+        gen.add(f"br label %{condLabel}\n")
+        gen.add(f"{condLabel}:")
+
+        condVar = self.cond.load(gen)
+        gen.add(f"br i1 {condVar}, label %{bodyLabel}, label %{exitLabel}\n")
+
+        gen.add(f"{bodyLabel}:")
+        self.stmt_list.to_llvm(gen)
+        gen.add(f"br label %{condLabel}\n")
+
+        gen.add(f"{exitLabel}:")
 
     def __str__(self) -> str:
         return 'while'
@@ -583,6 +723,24 @@ class FunctionNode(StmtNode):
         self.list.semantic_check(scope)
         self.node_type = TypeDesc.VOID
 
+    def to_llvm(self, gen: CodeGenerator):
+        code = f"define {getLLVMtype(self.type.type.name)} @{self.name.name}("
+
+        first_param = True
+        for param in self.argument_list.children:
+            if first_param:
+                code += f"getLLVMtype(param.node_type) %{param.name}"
+                first_param = False
+            else:
+                code += f", {getLLVMtype(param.node_type)} %{param.name}"
+        code += ") {"
+        gen.add(code)
+        self.list.to_llvm(gen)
+
+        if next((x for x in self.children if isinstance(x, ReturnNode)), None) is None:
+            gen.add("ret void")
+        gen.add("}")
+
     def __str__(self) -> str:
         return 'function'
 
@@ -639,6 +797,17 @@ class TypeConvertNode(ExprNode):
         self.type = type_
         self.node_type = type_
 
+    def load(self, gen: CodeGenerator) -> str:
+        var = self.expr.load(gen)
+        aa = getConvOp(self.expr.node_type.base_type, self.node_type.base_type)
+        gen.add(f"%{gen.getTempVar()} = {aa} "
+                f"{getLLVMtype(self.expr.node_type.base_type)} "
+                f"{var} to {getLLVMtype(self.type)}")
+
+        var = f"%{gen.getTempVar()}"
+        gen.addTempVarIndex()
+        return var
+
     def __str__(self) -> str:
         return 'convert'
 
@@ -662,8 +831,7 @@ def type_convert(expr: ExprNode, type_: TypeDesc, except_node: Optional[AstNode]
     if expr.node_type == type_:
         return expr
     if expr.node_type.is_simple and type_.is_simple and \
-            expr.node_type.base_type in TYPE_CONVERTIBILITY and type_.base_type in TYPE_CONVERTIBILITY[
-        expr.node_type.base_type]:
+            expr.node_type.base_type in TYPE_CONVERTIBILITY and type_.base_type in TYPE_CONVERTIBILITY:
         return TypeConvertNode(expr, type_)
     else:
         (except_node if except_node else expr).semantic_error('Тип {0}{2} не конвертируется в {1}'.format(
