@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, Union
 from enum import Enum
-from utils import BinOp, BaseType, getLLVMtype, getBinOp, getConvOp
+from utils import BinOp, BaseType, getLLVMtype, getBinOp, getConvOp, isBuiltinFunc
 from semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, TYPE_CONVERTIBILITY, \
     ArrayDesc
 
@@ -127,11 +127,15 @@ class FactorNode(ExprNode):
         self.operation = operation
 
     @property
-    def children(self) -> Tuple[ExprNode]:
+    def children(self) -> list[ExprNode]:
         return [self.literal]
 
     def semantic_check(self, scope: IdentScope) -> None:
         self.literal.semantic_check(scope)
+        self.node_type = self.literal.node_type
+
+    def load(self, gen: CodeGenerator) -> str:
+        return f"{self.operation}{self.literal.load(gen)}"
 
     def __str__(self) -> str:
         return f'uno {self.operation}'
@@ -166,10 +170,13 @@ class BinOpNode(ExprNode):
         self.op = op
         self.arg1 = arg1
         self.arg2 = arg2
+        self.is_simple = (isinstance(arg1, LiteralNode) or (isinstance(arg1, BinOpNode) and arg1.is_simple)) \
+                            and (isinstance(arg2, LiteralNode) or (isinstance(arg2, BinOpNode) and arg2.is_simple))
 
     @property
     def children(self) -> Tuple[ExprNode, ExprNode]:
         return self.arg1, self.arg2
+
 
     def semantic_check(self, scope: IdentScope) -> None:
         self.arg1.semantic_check(scope)
@@ -211,6 +218,9 @@ class BinOpNode(ExprNode):
 
     def load(self, gen: CodeGenerator) -> str:
 
+        if self.is_simple:
+            return eval(f"{self.arg1.load(gen)}{self.op.value}{self.arg2.load(gen)}")
+
         arg1 = self.arg1.load(gen)
         arg2 = self.arg2.load(gen)
 
@@ -221,7 +231,7 @@ class BinOpNode(ExprNode):
         return ret
 
     def to_llvm(self, gen: CodeGenerator):
-        pass #TODO maybe not
+        pass
 
     def __str__(self) -> str:
         return str(self.op.value)
@@ -322,25 +332,39 @@ class CallNode(StmtNode):
             self.node_type = func.type.return_type
 
     def to_llvm(self, gen: CodeGenerator):
-        if (len(self.params) == 1):
+        self.load(gen)
+
+    def load(self, gen: CodeGenerator) -> str:
+        result = f"%call.{self.func.name}.{gen.getVarIndex(f'call.{self.func.name}')}"
+        gen.addVarIndex(f'call.{self.func.name}')
+
+        if len(self.params) == 0:
+            gen.add(f"{result} = call {getLLVMtype(self.node_type.base_type)} @{self.func.name}()")
+            return result
+
+        if len(self.params) == 1 and isBuiltinFunc(self.func.name):
             var0 = self.params[0].load(gen)
 
             if self.func.name == "print_float" and self.params[0].node_type.base_type == BaseType.FLOAT:
-                gen.add(f"call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
+                gen.add(f"{result} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
                         f"([4 x i8], [4 x i8]* @formatFloat, i32 0, i32 0), double {var0})")
 
-                gen.addTempVarIndex()
-
             elif self.func.name == "print_int" and self.params[0].node_type.base_type == BaseType.INT:
-                gen.add(f"call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
+                gen.add(f"{result} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
                         f"([4 x i8], [4 x i8]* @formatInt, i32 0, i32 0), i32 {var0})")
 
-                gen.addTempVarIndex()
-
             elif self.func.name == "print_char" and self.params[0].node_type.base_type == BaseType.CHAR:
-                gen.add(f"call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
+                gen.add(f"{result} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
                         f"([4 x i8], [4 x i8]* @formatChar, i32 0, i32 0), i8 {var0})")
                 gen.addTempVarIndex()
+
+            return result
+
+        gen.add(f"{result} = call {getLLVMtype(self.node_type.base_type)} @{self.func.name}"
+                f"({', '.join(f'{getLLVMtype(param.node_type)} {param.load(gen)}' for param in self.params)})")
+
+        return result
+
         #TODO for multiple vars
 
     def __str__(self) -> str:
@@ -385,7 +409,6 @@ class AssignNode(StmtNode):
             gen.add(f"store {getLLVMtype(self.val.node_type.base_type)} {res}, "
                 f"{getLLVMtype(self.var.node_type.base_type)}* %{self.var.name}")
 
-        #TODO
     def __str__(self) -> str:
         return '='
 
@@ -410,14 +433,14 @@ class IfNode(StmtNode):
             self.else_stmt.semantic_check(IdentScope(scope))
         self.node_type = TypeDesc.VOID
 
-    def to_llvm(self, gen: CodeGenerator):
+    def to_llvm(self, gen: CodeGenerator)->None:
         condRes = self.cond.load(gen)
         eqLabel = f"IfTrue.0.{gen.getVarIndex('if')}"
         neqLabel = f"IfFalse.0.{gen.getVarIndex('if')}"
         resLabel = f"IfEnd.0.{gen.getVarIndex('if')}"
         gen.addVarIndex('if')
 
-        gen.add(f"br i1 {condRes}, label %{eqLabel}, label %{neqLabel}\n")
+        gen.add(f"br i1 {condRes}, label %{eqLabel}, label %{neqLabel if self.else_stmt is not None else resLabel}\n")
         gen.add(f"{eqLabel}:")
 
         self.then_stmt.to_llvm(gen)
@@ -640,6 +663,9 @@ class ArgumentNode(StmtNode):
             raise self.name.semantic_error(f'Параметр {self.name.name} уже объявлен')
         self.node_type = TypeDesc.VOID
 
+    def load(self, gen: CodeGenerator) -> str:
+        return f"{getLLVMtype(self.type_var.name)} %c{self.name.name}"
+
     def __str__(self) -> str:
         return 'argument'
 
@@ -653,6 +679,9 @@ class ArgumentListNode(StmtNode):
     @property
     def children(self) -> Tuple[ArgumentNode]:
         return self.arguments
+
+    def load(self, gen: CodeGenerator) -> str:
+        return ", ".join(f"{arg.load(gen)}" for arg in self.arguments)
 
     def __str__(self) -> str:
         return 'argument_list'
@@ -672,6 +701,8 @@ class ReturnTypeNode(AstNode):
     def semantic_check(self, scope: IdentScope) -> None:
         if self.type is None:
             self.semantic_error(f"Неизвестный тип: {type}")
+
+    #TODO return
 
     def __str__(self) -> str:
         return f'return type {"array" if self.isArr is not None else ""}'
@@ -723,29 +754,25 @@ class FunctionNode(StmtNode):
         self.list.semantic_check(scope)
         self.node_type = TypeDesc.VOID
 
-    def to_llvm(self, gen: CodeGenerator):
-        code = f"define {getLLVMtype(self.type.type.name)} @{self.name.name}("
-
-        first_param = True
-        for param in self.argument_list.children:
-            if first_param:
-                code += f"getLLVMtype(param.node_type) %{param.name}"
-                first_param = False
-            else:
-                code += f", {getLLVMtype(param.node_type)} %{param.name}"
-        code += ") {"
+    def to_llvm(self, gen: CodeGenerator) -> None:
+        code = f"define {getLLVMtype(self.type.type.name)} @{self.name.name}" \
+               f"({self.argument_list.load(gen)}) "'{'
         gen.add(code)
+
+        if len(self.argument_list.children) > 0:
+            gen.add("\n".join([f"%{arg.name} = alloca {getLLVMtype(arg.type_var.name)}" for arg in self.argument_list.children]))
+            gen.add("\n".join([f"store {getLLVMtype(arg.type_var.name)} %c{arg.name}, {getLLVMtype(arg.type_var.name)}* %{arg.name}" for arg in self.argument_list.children]))
         self.list.to_llvm(gen)
 
-        if next((x for x in self.children if isinstance(x, ReturnNode)), None) is None:
+        if next((x for x in self.list.children if isinstance(x, ReturnNode)), None) is None:
             gen.add("ret void")
-        gen.add("}")
+        gen.add("}\n")
 
     def __str__(self) -> str:
         return 'function'
 
 
-class ReturnNode(StmtNode):
+class ReturnNode(ExprNode):
     def __init__(self, expr: Optional[ExprNode] = None,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
@@ -757,12 +784,19 @@ class ReturnNode(StmtNode):
         return [self.expr] if self.expr else list()
 
     def semantic_check(self, scope: IdentScope) -> None:
-        self.expr.semantic_check(IdentScope(scope))
         func = scope.curr_func
         if func is None:
             self.semantic_error('Оператор return применим только к функции')
-        self.expr = type_convert(self.expr, func.func.type.return_type, self, 'возвращаемое значение')
+
+        if self.expr is not None:
+            self.expr.semantic_check(IdentScope(scope))
+            self.expr = type_convert(self.expr, func.func.type.return_type, self, 'возвращаемое значение')
+
         self.node_type = TypeDesc.VOID
+
+    def to_llvm(self, gen: CodeGenerator):
+        res = self.expr.load(gen) if self.expr is not None else "void"
+        gen.add(f"ret {getLLVMtype(self.expr.node_type)} {res}")
 
     def __str__(self) -> str:
         return 'return'

@@ -1,0 +1,2 @@
+lli llvm.ll //run jit
+clang -O3 llvm.ll -o llvm.bc //to excutable

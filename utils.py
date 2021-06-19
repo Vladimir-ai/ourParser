@@ -87,3 +87,12 @@ def getConvOp(opFrom: BaseType, opTo: BaseType) -> str:
 
     if (opFrom == BaseType.INT or opFrom == BaseType.BOOL) and opTo == BaseType.FLOAT:
         return "sitofp"
+
+
+def isBuiltinFunc(name: str) -> bool:
+    if name == "print_float" \
+            or name == "print_int" \
+            or name == "print_char":
+        return True
+
+    return False
