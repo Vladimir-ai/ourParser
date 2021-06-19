@@ -8,7 +8,11 @@ int aa(int a, int b){
 }
 
 int main(){
-    print_int(aa(1,1));
+
+    float b = read_float();
+
+//    print_int(aa(1,1));
+    print_float(b);
     return 0;
 // найти максимальное число фибоначчи не более заданного
 //    int a = 1, b = 0;

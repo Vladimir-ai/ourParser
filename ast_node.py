@@ -5,7 +5,7 @@ from utils import BinOp, BaseType, getLLVMtype, getBinOp, getConvOp, isBuiltinFu
 from semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, TYPE_CONVERTIBILITY, \
     ArrayDesc
 
-from code_generator import CodeGenerator
+from code_generator import CodeGenerator, INT_POINTER_CONST, CHAR_POINTER_CONST, FLOAT_POINTER_CONST
 
 
 class KeyWords(Enum):
@@ -338,8 +338,22 @@ class CallNode(StmtNode):
         result = f"%call.{self.func.name}.{gen.getVarIndex(f'call.{self.func.name}')}"
         gen.addVarIndex(f'call.{self.func.name}')
 
-        if len(self.params) == 0:
-            gen.add(f"{result} = call {getLLVMtype(self.node_type.base_type)} @{self.func.name}()")
+        if len(self.params) == 0 and isBuiltinFunc(self.func.name):
+            if self.func.name == "read_int":
+                gen.add(f"call i32 (i8*, ...) @scanf(i8* getelementptr inbounds "
+                        f"([3 x i8], [3 x i8]* @inputInt, i32 0, i32 0), i32* {INT_POINTER_CONST})")
+                gen.add(f"{result} = load i32, i32* {INT_POINTER_CONST}")
+
+            elif self.func.name == "read_char":
+                gen.add(f"call i32 (i8*, ...) @scanf(i8* getelementptr inbounds "
+                        f"([3 x i8], [3 x i8]* @inputChar, i32 0, i32 0), i8* {CHAR_POINTER_CONST})")
+                gen.add(f"{result} = load i8, i8* {CHAR_POINTER_CONST}")
+
+            elif self.func.name == "read_float":
+                gen.add(f"call i32 (i8*, ...) @scanf(i8* getelementptr inbounds "
+                        f"([4 x i8], [4 x i8]* @inputFloat, i32 0, i32 0), double* {FLOAT_POINTER_CONST})")
+                gen.add(f"{result} = load double, double* {FLOAT_POINTER_CONST}")
+
             return result
 
         if len(self.params) == 1 and isBuiltinFunc(self.func.name):
