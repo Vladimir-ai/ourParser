@@ -1,8 +1,9 @@
 from enum import Enum
 from typing import Optional, Tuple, Any, Dict
 
-import parser_base
-from utils import BinOp, BaseType, ArrayType
+
+import compiler.parser_base as parser_base
+from compiler.utils import BinOp, BaseType, ArrayType
 
 VOID, INT, FLOAT, BOOL, CHAR = BaseType.VOID, BaseType.INT, BaseType.FLOAT, BaseType.BOOL, BaseType.CHAR
 INT_ARRAY, FLOAT_ARRAY, BOOL_ARRAY, CHAR_ARRAY = \

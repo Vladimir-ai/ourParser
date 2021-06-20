@@ -1,5 +1,5 @@
 from lark import Lark, Token, InlineTransformer
-from ast_node import *
+from compiler.ast_node import *
 
 '''
 type_ident = (("int" | "float" ))    TO-DO   |  "bool" | "char"))
@@ -53,7 +53,7 @@ class ASTBuilder(InlineTransformer):
 
 
 def parse(prog: str, debug=False) -> StmtListNode:
-    parser = Lark.open("./syntax.lark", start='start', lexer='standard', propagate_positions=True)  # , lexer="standard")
+    parser = Lark.open("compiler/syntax.lark", start='start', lexer='standard', propagate_positions=True)  # , lexer="standard")
     prog = parser.parse(prog)
     if debug:
         print(prog.pretty())

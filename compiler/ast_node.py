@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, Union
 from enum import Enum
-from utils import BinOp, BaseType
-from semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, TYPE_CONVERTIBILITY, \
+from compiler.utils import BinOp, BaseType
+from compiler.semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, \
+    TYPE_CONVERTIBILITY, \
     ArrayDesc
 
-from code_generator import CodeGenerator
+from compiler.code_generator import CodeGenerator
 
 
 class KeyWords(Enum):
@@ -24,7 +25,6 @@ def checkNameIsKeywordAndRaiseException(name: str, text: str):
 
 
 class AstNode(ABC):
-
     init_action: Callable[['AstNode'], None] = None
 
     def __init__(self, line: Optional[int] = None, column: Optional[int] = None, **props):
@@ -58,7 +58,7 @@ class AstNode(ABC):
     def semantic_check(self, scope: IdentScope) -> None:
         pass
 
-    def to_llvm(self) -> str:
+    def msil(self, gen: CodeGenerator) -> None:
         pass
 
     @property
@@ -82,6 +82,7 @@ class AstNode(ABC):
 
 class ExprNode(AstNode):
     pass
+
 
 EMPTY_IDENT = IdentDesc('', TypeDesc.VOID)
 
@@ -162,7 +163,7 @@ class BinOpNode(ExprNode):
         self.arg2.semantic_check(scope)
 
         if self.arg1.node_ident is not None and self.arg2.node_ident is not None \
-            and type(self.arg1.node_ident) != type(self.arg1.node_ident):
+                and type(self.arg1.node_ident) != type(self.arg1.node_ident):
             self.semantic_error("BBBBBBBBBBBBBB")
 
         if self.arg1.node_type.is_simple or self.arg2.node_type.is_simple:
@@ -281,7 +282,6 @@ class CallNode(StmtNode):
             self.func.node_type = func.type
             self.func.node_ident = func
             self.node_type = func.type.return_type
-
 
     def __str__(self) -> str:
         return 'call'
@@ -444,7 +444,8 @@ class ArrayDeclarationNode(StmtNode):
 
         try:
             self.value.semantic_check(scope)
-            scope.add_ident(ArrayDesc(str(self.name), TypeDesc.arr_from_str(str(self.type_var)), type_convert(self.value, TypeDesc.INT, self)))
+            scope.add_ident(ArrayDesc(str(self.name), TypeDesc.arr_from_str(str(self.type_var)),
+                                      type_convert(self.value, TypeDesc.INT, self)))
         except SemanticException as e:
             self.semantic_error(e.message)
         self.node_type = TypeDesc.arr_from_str(str(self.type_var))
@@ -469,7 +470,7 @@ class ArrayIndexingNode(ExprNode):
         if str(self.name).upper() in BaseType.__dict__:
             self.semantic_error("Using keyword in name of array")
         self.name.semantic_check(scope)
-        self.value.semantic_check(scope) #check return type
+        self.value.semantic_check(scope)  # check return type
         curr_ident = scope.get_ident(str(self.name))
         if not isinstance(curr_ident, ArrayDesc):
             self.semantic_error(f"{self.name} is not an array")
@@ -552,7 +553,8 @@ class FunctionNode(StmtNode):
 
     def semantic_check(self, scope: IdentScope) -> None:
         if scope.curr_func:
-            self.semantic_error("Объявление функции ({}) внутри другой функции не поддерживается".format(self.name.name))
+            self.semantic_error(
+                "Объявление функции ({}) внутри другой функции не поддерживается".format(self.name.name))
         parent_scope = scope
         self.type.semantic_check(scope)
         scope = IdentScope(scope)
@@ -632,6 +634,7 @@ class TypeConvertNode(ExprNode):
     """Класс для представления в AST-дереве операций конвертации типов данных
        (в языке программирования может быть как expression, так и statement)
     """
+
     def __init__(self, expr: ExprNode, type_: TypeDesc,
                  row: Optional[int] = None, col: Optional[int] = None, **props) -> None:
         super().__init__(row=row, col=col, **props)
@@ -669,5 +672,3 @@ def type_convert(expr: ExprNode, type_: TypeDesc, except_node: Optional[AstNode]
         (except_node if except_node else expr).semantic_error('Тип {0}{2} не конвертируется в {1}'.format(
             expr.node_type, type_, ' ({})'.format(comment) if comment else ''
         ))
-
-

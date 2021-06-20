@@ -3,7 +3,7 @@ int main(int a, char b, bool c, int d[2]){
     int f = 1;
     int h, l, e=10;
     //-b;
-    a = b + 1;
+    a = b + -1;
     if(a == 0){
         d[1] = 20;
     }

@@ -1,6 +1,6 @@
 import sys
 
-import parser_base
+import compiler.parser_base as parser_base
 import os
 
 

@@ -1,8 +1,7 @@
-import parser_base
-import semantic
+from compiler import parser_base, semantic
 import os
 
-from tests import working_test
+from compiler.tests import working_test
 
 if __name__ == '__main__':
     prog = open('tests/aaaaa.C', 'r').read()
