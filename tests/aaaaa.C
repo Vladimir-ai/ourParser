@@ -1,11 +1,11 @@
 int main(int a, char b, bool c, int d[2]){
     a = 0;
-    int f = 1;
+    int f = -1;
     int h, l, e=10;
     //-b;
     a = b + -1;
     if(a == 0){
-        d[1] = 20;
+        d[1] = -20;
     }
 
     for(int i = 0; i < 10; i=i+1){

@@ -37,9 +37,13 @@ class CodeGenerator:
         self.add('.class private auto ansi beforefieldinit Program')
         self.add('{')
 
+
     def end(self) -> None:
         self.add('}')
 
     def add(self, code: str):
         self.code_lines.append(CodeLine(code))
+
+    def __str__(self):
+        return '\n'.join([str(line) for line in self.code_lines])
 

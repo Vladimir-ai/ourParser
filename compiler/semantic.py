@@ -1,7 +1,6 @@
 from enum import Enum
 from typing import Optional, Tuple, Any, Dict
 
-
 import compiler.parser_base as parser_base
 from compiler.utils import BinOp, BaseType, ArrayType
 
@@ -11,7 +10,7 @@ INT_ARRAY, FLOAT_ARRAY, BOOL_ARRAY, CHAR_ARRAY = \
 
 TYPE_CONVERTIBILITY = {
     INT: (FLOAT, BOOL),
-    FLOAT: BOOL,
+    FLOAT: (BOOL),
     BOOL: (INT, CHAR),
     CHAR: (INT, BOOL)
 }
@@ -313,12 +312,19 @@ def get_default_scope() -> IdentScope:
     BUILT_IN_FUNCTIONS = '''void print_int(int var){}
     void print_float(float var){}
     void print_char(char var){}
-    void print_bool(bool var){}'''
+    void print_bool(bool var){}
+    int read_int(){}
+    float read_float(){}
+    char read_char(){}
+    bool read_bool(){}'''
+
     prog = parser_base.parse(BUILT_IN_FUNCTIONS)
     scope = IdentScope()
     prog.semantic_check(scope)
+
     for name, ident in scope.idents.items():
         ident.built_in = True
+
     scope.var_index = 0
     return scope
 

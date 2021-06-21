@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Tuple, Optional, Union
+from typing import Callable, Tuple, Optional, Union, List
 from enum import Enum
-from compiler.utils import BinOp, BaseType
+from compiler.utils import BinOp, BaseType, to_msil_type
 from compiler.semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, \
-    TYPE_CONVERTIBILITY, \
-    ArrayDesc
+    TYPE_CONVERTIBILITY, ArrayDesc
 
 from compiler.code_generator import CodeGenerator
 
@@ -58,7 +57,7 @@ class AstNode(ABC):
     def semantic_check(self, scope: IdentScope) -> None:
         pass
 
-    def msil(self, gen: CodeGenerator) -> None:
+    def msil(self, gen: CodeGenerator):
         pass
 
     @property
@@ -72,16 +71,28 @@ class AstNode(ABC):
             res.extend(((ch0 if j == 0 else ch) + ' ' + s for j, s in enumerate(child.tree)))
         return tuple(res)
 
-    def visit(self, func: Callable[['AstNode'], None]) -> None:
-        func(self)
-        map(func, self.children)
+    def to_msil_str(self) -> str:
+        pass
+
+    def get_vars_decl(self):
+        vars = []
+        for child in self.children:
+            v = child.get_vars_decl()
+            if v:
+                vars.extend(v)
+        return vars
 
     def __getitem__(self, index):
         return self.children[index] if index < len(self.children) else None
 
 
-class ExprNode(AstNode):
+class StmtListNode:
     pass
+
+
+class ExprNode(AstNode):
+    def load(self, gen: CodeGenerator) -> str:
+        pass
 
 
 EMPTY_IDENT = IdentDesc('', TypeDesc.VOID)
@@ -119,11 +130,12 @@ class FactorNode(ExprNode):
         self.operation = operation
 
     @property
-    def children(self) -> Tuple[ExprNode]:
+    def children(self) -> List[ExprNode]:
         return [self.literal]
 
     def semantic_check(self, scope: IdentScope) -> None:
         self.literal.semantic_check(scope)
+        self.node_type = self.literal.node_type
 
     def __str__(self) -> str:
         return f'uno {self.operation}'
@@ -153,6 +165,8 @@ class BinOpNode(ExprNode):
         self.op = op
         self.arg1 = arg1
         self.arg2 = arg2
+        self.is_simple = (isinstance(arg1, LiteralNode) or (isinstance(arg1, BinOpNode) and arg1.is_simple)) \
+                         and (isinstance(arg2, LiteralNode) or (isinstance(arg2, BinOpNode) and arg2.is_simple))
 
     @property
     def children(self) -> Tuple[ExprNode, ExprNode]:
@@ -174,7 +188,7 @@ class BinOpNode(ExprNode):
                 return
 
             if self.arg2.node_type.base_type in TYPE_CONVERTIBILITY:
-                for arg2_type in TYPE_CONVERTIBILITY[self.arg2.node_type.base_type]:
+                for arg2_type in TYPE_CONVERTIBILITY:
                     args_types = (self.arg1.node_type.base_type, arg2_type)
                     if args_types in compatibility:
                         self.arg2 = type_convert(self.arg2, TypeDesc.from_base_type(arg2_type))
@@ -228,6 +242,21 @@ class VarsDeclNode(StmtNode):
                 var_node.semantic_error(e.message)
             var.semantic_check(scope)
         self.node_type = TypeDesc.VOID
+
+    def msil(self, gen: CodeGenerator) -> None:
+        pass
+
+    def get_vars_decl(self):
+        vars = []
+        for var in self.vars_list:
+            type = to_msil_type(self.vars_type.name)
+            # var_name =
+            if isinstance(var, IdentNode):
+                var_name = var.name
+            elif isinstance(var, AssignNode):
+                var_name = var.var.name
+            vars.append((type, var_name))
+        return vars
 
     def __str__(self) -> str:
         return 'var'
@@ -304,10 +333,13 @@ class AssignNode(StmtNode):
 
         if self.var.node_ident is not None and self.val.node_ident is not None \
                 and type(self.var.node_ident) != type(self.val.node_ident):
-            self.semantic_error("AAAAAAAA")
+            self.semantic_error("incompatible types")
 
         self.val = type_convert(self.val, self.var.node_type, self, 'присваиваемое значение')
         self.node_type = self.var.node_type
+
+    def msil(self, gen: CodeGenerator) -> None:
+        pass
 
     def __str__(self) -> str:
         return '='
@@ -338,8 +370,8 @@ class IfNode(StmtNode):
 
 
 class ForNode(AstNode):
-    def __init__(self, init: Union[StmtNode, None], cond: Union[ExprNode, StmtNode, None],
-                 step: Union[StmtNode, None], body: Union[StmtNode, None] = None,
+    def __init__(self, init: StmtListNode, cond: ExprNode,
+                 step: StmtListNode, body: Union[StmtNode, None] = None,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
         self.init = init if init else _empty
@@ -384,15 +416,12 @@ class StmtListNode(StmtNode):
             expr.semantic_check(scope)
         self.node_type = TypeDesc.VOID
 
-    def to_llvm(self) -> (str, int):
-        code = ""
-        for child in self.children:
-            new_code, ret = child.to_llvm()
-            code += new_code
-        return code
-
     def __str__(self) -> str:
         return '...'
+
+    def msil(self, gen: CodeGenerator) -> None:
+        for stmt in self.exprs:
+            stmt.msil(gen)
 
 
 _empty = StmtListNode()
@@ -501,6 +530,11 @@ class ArgumentNode(StmtNode):
             raise self.name.semantic_error(f'Параметр {self.name.name} уже объявлен')
         self.node_type = TypeDesc.VOID
 
+    def to_msil_str(self) -> str:
+        type = to_msil_type(self.type_var.name)
+        id = self.name.name
+        return type + ' ' + id
+
     def __str__(self) -> str:
         return 'argument'
 
@@ -517,6 +551,9 @@ class ArgumentListNode(StmtNode):
 
     def __str__(self) -> str:
         return 'argument_list'
+
+    def to_msil_str(self) -> str:
+        return ', '.join([arg.to_msil_str() for arg in self.children])
 
 
 class ReturnTypeNode(AstNode):
@@ -588,8 +625,35 @@ class FunctionNode(StmtNode):
     def __str__(self) -> str:
         return 'function'
 
+    def msil(self, gen: CodeGenerator) -> None:
+        start = '.method private hidebysig static '
+        start += to_msil_type(self.type.type.name) + ' '
+        start += self.name.name + '('
+        args = self.argument_list.to_msil_str()  # TODO arrays
+        start += args
+        start += ') cli managed'
+        gen.add(start)
+        gen.add('{')
+        if self.name.name == 'main':
+            gen.add('.entrypoint')
+        gen.add('.maxstack  8')
 
-class ReturnNode(StmtNode):
+        locals = '.locals init ('
+        vars = self.get_vars_decl()
+        locals += ', '.join([f'[{i}] {var[0]} {var[1]}' for i, var in enumerate(vars)])
+        locals += ')'
+        gen.add(locals)
+
+        # TODO stmts
+
+        # TODO return
+
+        if self.type.type.name == 'void':
+            gen.add('ret')
+        gen.add('}')
+
+
+class ReturnNode(ExprNode):
     def __init__(self, expr: Optional[ExprNode] = None,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
@@ -601,11 +665,14 @@ class ReturnNode(StmtNode):
         return [self.expr] if self.expr else list()
 
     def semantic_check(self, scope: IdentScope) -> None:
-        self.expr.semantic_check(IdentScope(scope))
         func = scope.curr_func
         if func is None:
             self.semantic_error('Оператор return применим только к функции')
-        self.expr = type_convert(self.expr, func.func.type.return_type, self, 'возвращаемое значение')
+
+        if self.expr is not None:
+            self.expr.semantic_check(IdentScope(scope))
+            self.expr = type_convert(self.expr, func.func.type.return_type, self, 'возвращаемое значение')
+
         self.node_type = TypeDesc.VOID
 
     def __str__(self) -> str:
@@ -665,8 +732,7 @@ def type_convert(expr: ExprNode, type_: TypeDesc, except_node: Optional[AstNode]
     if expr.node_type == type_:
         return expr
     if expr.node_type.is_simple and type_.is_simple and \
-            expr.node_type.base_type in TYPE_CONVERTIBILITY and type_.base_type in TYPE_CONVERTIBILITY[
-        expr.node_type.base_type]:
+            expr.node_type.base_type in TYPE_CONVERTIBILITY and type_.base_type in TYPE_CONVERTIBILITY:
         return TypeConvertNode(expr, type_)
     else:
         (except_node if except_node else expr).semantic_error('Тип {0}{2} не конвертируется в {1}'.format(
