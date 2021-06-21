@@ -22,26 +22,30 @@ entry:
 ;   %q = alloca float ;ptr
 ;   store float 3.1, float* %q ;save to mem
 ;   %q = load float, float* %q
-  
-  %x = fadd double 1.3, 1.3
-  %aaa = add i1 0, 0
-  ;%ptr = alloca double, double 1.0                               
-  %ccc = fadd double 1.0, %x
+
+;  %x = fadd double 1.3, 1.3
+;  %aaa = add i1 0, 0
+;  ;%ptr = alloca double, double 1.0                               
+;  %ccc = fadd double 1.0, %x
   ;store double %ccc, double* %ptr
-  %cc = alloca i32, i32 97
+;  %cc = alloca i32, i32 97
   
-  %c = add i32 97, 1
+;  %c = add i32 97, 1
   
-  store i32 %c, i32* %cc
+;  store i32 %c, i32* %cc
     
-  %call.0 = call i32 (i8*, ...) @scanf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @intInput, i32 0, i32 0), i32* @int.0.0)
+;  %call.0 = call i32 (i8*, ...) @scanf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @intInput, i32 0, i32 0), i32* @int.0.0)
   
-  %da = load i32, i32* @int.0.0
+;  %da = load i32, i32* @int.0.0
   
   ; Call puts function to write out the string to stdout.
   ;%call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @formatInt, i32 0, i32 0), i32 %x) ;int
   ;%call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @formatFloat, i32 0, i32 0), double %x) ;float
-  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @formatInt, i32 0, i32 0), i32 %da) ;char
+ 
+ 
+ 
+ 
+ %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @formatInt, i32 0, i32 0), i32 %da) ;char
   ret i32 0
 }
 

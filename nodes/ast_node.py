@@ -72,19 +72,18 @@ class AstNode(ABC):
             res.extend(((ch0 if j == 0 else ch) + ' ' + s for j, s in enumerate(child.tree)))
         return tuple(res)
 
-    def visit(self, func: Callable[['AstNode'], None]) -> None:
-        func(self)
-        map(func, self.children)
-
     def __getitem__(self, index):
         return self.children[index] if index < len(self.children) else None
+
 
 class StmtListNode:
     pass
 
+
 class ExprNode(AstNode):
     def load(self, gen: CodeGenerator) -> str:
         pass
+
 
 EMPTY_IDENT = IdentDesc('', TypeDesc.VOID)
 
@@ -135,6 +134,7 @@ class FactorNode(ExprNode):
         self.node_type = self.literal.node_type
 
     def load(self, gen: CodeGenerator) -> str:
+        # TODO fix for idents
         return f"{self.operation}{self.literal.load(gen)}"
 
     def __str__(self) -> str:
@@ -219,7 +219,10 @@ class BinOpNode(ExprNode):
     def load(self, gen: CodeGenerator) -> str:
 
         if self.is_simple:
-            return eval(f"{self.arg1.load(gen)}{self.op.value}{self.arg2.load(gen)}")
+            try:
+                return eval(f"{self.arg1.load(gen)}{self.op.value}{self.arg2.load(gen)}")
+            except SyntaxError:
+                pass
 
         arg1 = self.arg1.load(gen)
         arg2 = self.arg2.load(gen)
@@ -271,7 +274,6 @@ class VarsDeclNode(StmtNode):
         for node in self.vars_list:
             if isinstance(node, AssignNode):
                 gen.add(f"%{node.var.name} = alloca {getLLVMtype(self.vars_type.name)}")
-                gen.add(f"store {getLLVMtype(self.vars_type.name)} {val}, {getLLVMtype(self.vars_type.name)}* %{node.var.name}")
                 node.to_llvm(gen)
             if isinstance(node, IdentNode):
                 gen.add(f"%{node.name} = alloca {getLLVMtype(self.vars_type.name)}")
@@ -374,12 +376,23 @@ class CallNode(StmtNode):
 
             return result
 
-        gen.add(f"{result} = call {getLLVMtype(self.node_type.base_type)} @{self.func.name}"
-                f"({', '.join(f'{getLLVMtype(param.node_type)} {param.load(gen)}' for param in self.params)})")
+        res_str = f"{result} = call {getLLVMtype(self.node_type.base_type)} @{self.func.name}("
+        args = []
+        for param in self.params:
+            if param.node_type.is_arr:
+                var_name = f"%{param.name}.{gen.getVarIndex(param.name)}"
+                var_type = f"{getLLVMtype(param.node_type)}"
 
+                gen.add(f'{var_name} = load {var_type}*, {var_type}** %{param.name}')
+                gen.getVarIndex(param.name)
+
+                args.append(f'{getLLVMtype(param.node_type)}* {var_name}')
+            else:
+                args.append(f'{getLLVMtype(param.node_type)} {param.load(gen)}')
+
+        res_str += f"{', '.join(args)})"
+        gen.add(res_str)
         return result
-
-        #TODO for multiple vars
 
     def __str__(self) -> str:
         return 'call'
@@ -409,19 +422,38 @@ class AssignNode(StmtNode):
 
     def to_llvm(self, gen: CodeGenerator) -> None:
         add = "fadd" if self.node_type.base_type == BaseType.FLOAT else "add"
+
+        if self.val.node_type == self.var.node_type \
+            and self.val.node_type.array:
+            self_type = getLLVMtype(self.node_type.base_type)
+
+            temp_val = gen.getTempVar()
+            gen.addTempVarIndex()
+            gen.add(f"%{temp_val} = load {self_type}*, {self_type}** %{self.val.name}")
+
+            gen.add(f"store {self_type}* %{temp_val}, {self_type}** %{self.var.name}")
+            return;
+
+        if isinstance(self.var, ArrayIndexingNode):
+            target_ptr = f"{self.var.load_ptr(gen)}"
+            var_name = self.var.name.name
+        else:
+            target_ptr = f"%{self.var.name}"
+            var_name = self.var.name
+
         if isinstance(self.val, LiteralNode):
-            gen.add(f"%{self.var.name}.{gen.getVarIndex(self.var.name)} = {add} {getLLVMtype(self.node_type.base_type)} "
+            gen.add(f"%{var_name}.{gen.getVarIndex(var_name)} = {add} {getLLVMtype(self.node_type.base_type)} "
                     f"{0.0 if self.node_type.base_type == BaseType.FLOAT else 0}, "
                     f"{self.val.value if self.node_type.base_type != BaseType.CHAR else ord(self.val.value)}")
 
-            gen.addVarIndex(self.var.name)
-            gen.add(f"store {getLLVMtype(self.node_type.base_type)} %{self.var.name}.{gen.getVarIndex(self.var.name) - 1}, "
-                    f"{getLLVMtype(self.node_type.base_type)}* %{self.var.name}")
+            gen.addVarIndex(var_name)
+            gen.add(f"store {getLLVMtype(self.node_type.base_type)} %{var_name}.{gen.getVarIndex(var_name) - 1}, "
+                    f"{getLLVMtype(self.node_type.base_type)}* {target_ptr}")
 
         elif isinstance(self.val, ExprNode):
             res = self.val.load(gen)
             gen.add(f"store {getLLVMtype(self.val.node_type.base_type)} {res}, "
-                f"{getLLVMtype(self.var.node_type.base_type)}* %{self.var.name}")
+                f"{getLLVMtype(self.var.node_type.base_type)}* {target_ptr}")
 
     def __str__(self) -> str:
         return '='
@@ -626,6 +658,20 @@ class ArrayDeclarationNode(StmtNode):
             self.semantic_error(e.message)
         self.node_type = TypeDesc.arr_from_str(str(self.type_var))
 
+    def to_llvm(self, gen: CodeGenerator) -> None:
+        count_arg = self.value.load(gen)
+        node_type = getLLVMtype(self.node_type.base_type)
+
+        gen.add(f"%{self.name.name}.{gen.getVarIndex(self.name.name)} = alloca {node_type}, {getLLVMtype(self.value.node_type)} {count_arg}")
+        gen.add(f"%{self.name.name} = alloca {node_type}*")
+        gen.add(f"store {node_type}* %{self.name.name}.{gen.getVarIndex(self.name.name)}, {node_type}** %{self.name.name}")
+
+        gen.addVarIndex(self.name.name)
+
+    # used only in argument list node
+    def load(self, gen: CodeGenerator) -> str:
+        return f"{getLLVMtype(self.node_type.base_type)}* %c{self.name}"
+
     def __str__(self) -> str:
         return 'array_declaration'
 
@@ -652,6 +698,38 @@ class ArrayIndexingNode(ExprNode):
             self.semantic_error(f"{self.name} is not an array")
 
         self.node_type = scope.get_ident(str(self.name)).toIdentDesc().type
+
+    def load(self, gen: CodeGenerator) -> str:
+        result = f"%{self.name.name}.{gen.getVarIndex(self.name.name)}"
+        self_type = getLLVMtype(self.node_type.base_type)
+
+        temp_var = gen.getTempVar()
+        gen.add(f"%{temp_var} = load {self_type}*, {self_type}** %{self.name.name}")
+
+        gen.addTempVarIndex()
+        gen.add(f"%{gen.getTempVar()} = getelementptr inbounds {self_type}, "
+                f"{self_type}* %{temp_var}, "
+                f"{getLLVMtype(self.value.node_type)} {self.value.load(gen)}")
+
+        gen.add(f"{result} = load {self_type}, {self_type}* %{gen.getTempVar()}")
+        gen.addVarIndex(self.name.name)
+        gen.addTempVarIndex()
+        return result
+
+    def load_ptr(self, gen: CodeGenerator) -> str:
+        result = f"%{self.name.name}.{gen.getVarIndex(self.name.name)}"
+        self_type = getLLVMtype(self.node_type.base_type)
+
+        temp_var = gen.getTempVar()
+        gen.add(f"%{temp_var} = load {self_type}*, {self_type}** %{self.name.name}")
+
+        gen.addTempVarIndex()
+
+        gen.add(f"{result} = getelementptr inbounds {self_type}, "
+                f"{self_type}* %{temp_var}, "
+                f"{getLLVMtype(self.value.node_type)} {self.value.load(gen)}")
+        gen.addVarIndex(self.name.name)
+        return result
 
     def __str__(self) -> str:
         return 'array_index'
@@ -695,7 +773,11 @@ class ArgumentListNode(StmtNode):
         return self.arguments
 
     def load(self, gen: CodeGenerator) -> str:
-        return ", ".join(f"{arg.load(gen)}" for arg in self.arguments)
+        result = list()
+        for arg in self.arguments:
+            result.append(arg.load(gen))
+
+        return ', '.join(result)
 
     def __str__(self) -> str:
         return 'argument_list'
@@ -715,8 +797,6 @@ class ReturnTypeNode(AstNode):
     def semantic_check(self, scope: IdentScope) -> None:
         if self.type is None:
             self.semantic_error(f"Неизвестный тип: {type}")
-
-    #TODO return
 
     def __str__(self) -> str:
         return f'return type {"array" if self.isArr is not None else ""}'
@@ -774,8 +854,24 @@ class FunctionNode(StmtNode):
         gen.add(code)
 
         if len(self.argument_list.children) > 0:
-            gen.add("\n".join([f"%{arg.name} = alloca {getLLVMtype(arg.type_var.name)}" for arg in self.argument_list.children]))
-            gen.add("\n".join([f"store {getLLVMtype(arg.type_var.name)} %c{arg.name}, {getLLVMtype(arg.type_var.name)}* %{arg.name}" for arg in self.argument_list.children]))
+
+            for arg in self.argument_list.children:
+                if isinstance(arg, ArgumentNode):
+                    gen.add(f"%{arg.name} = alloca {getLLVMtype(arg.type_var.name)}")
+                    gen.add(f"store {getLLVMtype(arg.type_var.name)} %c{arg.name}, {getLLVMtype(arg.type_var.name)}* %{arg.name}")
+                elif isinstance(arg, ArrayDeclarationNode):
+                    arg_type = getLLVMtype(arg.type_var.name)
+                    gen.add(f"%{arg.name.name} = alloca {arg_type}*")
+                    gen.add(f"%{arg.name.name}.{gen.getVarIndex(arg.name.name)} = alloca {arg_type}, i32 {arg.value.load(gen)}")
+                    gen.add(f"call void @llvm.memcpy.p0{arg_type}.p0{arg_type}.i32("
+                            f"{arg_type}* %{arg.name.name}.{gen.getVarIndex(arg.name.name)}, {arg_type}* %c{arg.name.name}, "
+                            f"i32 {arg.value.load(gen)}, i1 0)")
+
+                    gen.add(f"store {arg_type}* %{arg.name.name}.{gen.getVarIndex(arg.name.name)},"
+                            f"{arg_type}** %{arg.name.name}")
+
+                    gen.addVarIndex(arg.name.name) # TODO check correctness
+
         self.list.to_llvm(gen)
 
         if next((x for x in self.list.children if isinstance(x, ReturnNode)), None) is None:
@@ -847,8 +943,8 @@ class TypeConvertNode(ExprNode):
 
     def load(self, gen: CodeGenerator) -> str:
         var = self.expr.load(gen)
-        aa = getConvOp(self.expr.node_type.base_type, self.node_type.base_type)
-        gen.add(f"%{gen.getTempVar()} = {aa} "
+        conv_op = getConvOp(self.expr.node_type.base_type, self.node_type.base_type)
+        gen.add(f"%{gen.getTempVar()} = {conv_op} "
                 f"{getLLVMtype(self.expr.node_type.base_type)} "
                 f"{var} to {getLLVMtype(self.type)}")
 

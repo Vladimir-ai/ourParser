@@ -43,7 +43,8 @@ class ArrayType(Enum):
 
 
 def getLLVMtype(type):
-    result = str(type).replace("int", "i32") \
+    result = str(type).replace("array ", "")\
+        .replace("int", "i32") \
         .replace("float", "double") \
         .replace("bool", "i1") \
         .replace("char", "i8") \

@@ -23,6 +23,11 @@ class CodeGenerator:
         self.code_lines.append(CodeLine("declare i32 @printf(i8*, ...) nounwind"))
         self.code_lines.append(CodeLine("declare i32 @scanf(i8*, ...) nounwind\n"))
 
+        self.code_lines.append(CodeLine("declare void @llvm.memcpy.p0i32.p0i32.i32(i32*, i32*, i32, i1)"))
+        self.code_lines.append(CodeLine("declare void @llvm.memcpy.p0i1.p0i1.i32(i1*, i1*, i32, i1)"))
+        self.code_lines.append(CodeLine("declare void @llvm.memcpy.p0i8.p0i8.i32(i8*, i8*, i32, i1)"))
+        self.code_lines.append(CodeLine("declare void @llvm.memcpy.p0double.p0double.i32(double*, double*, i32, i1)\n"))
+
         self.code_lines.append(CodeLine(f"{INT_POINTER_CONST} = global i32 0"))
         self.code_lines.append(CodeLine(f"{CHAR_POINTER_CONST} = global i8 0"))
         self.code_lines.append(CodeLine(f"{FLOAT_POINTER_CONST} = global double 0.0\n"))
@@ -31,23 +36,23 @@ class CodeGenerator:
         self.code_lines.append(CodeLine("@formatFloat = private constant [4 x i8] c\"%f\\0A\\00\""))
         self.code_lines.append(CodeLine("@formatChar = private constant [4 x i8] c\"%c\\0A\\00\"\n"))
 
-        self.code_lines.append(CodeLine("@inputFloat = private constant [4 x i8] c\"%lf\\00\"\n"))
+        self.code_lines.append(CodeLine("@inputFloat = private constant [4 x i8] c\"%lf\\00\""))
         self.code_lines.append(CodeLine("@inputChar = private constant [3 x i8] c\"%c\\00\""))
-        self.code_lines.append(CodeLine("@inputInt = private constant [3 x i8] c\"%d\\00\""))
+        self.code_lines.append(CodeLine("@inputInt = private constant [3 x i8] c\"%d\\00\"\n"))
 
     def add(self, code: str):
         self.code_lines.append(CodeLine(code))
 
     def addVarIndex(self, var_name: str):
-        if var_name in self.var_counter:
-            self.var_counter[var_name] += 1
+        if str(var_name) in self.var_counter:
+            self.var_counter[str(var_name)] += 1
         else:
-            self.var_counter[var_name] = 1
+            self.var_counter[str(var_name)] = 1
 
     def getVarIndex(self, var_name:str)->int:
         if var_name not in self.var_counter:
             return 0
-        return self.var_counter[var_name]
+        return self.var_counter[str(var_name)]
 
     def getTempVar(self) -> str:
         temp = "temp"

@@ -1,7 +1,6 @@
-import sys
-
 import parser_base
 import os
+import sys
 
 
 def run_all(debug=False)->bool:
@@ -21,7 +20,7 @@ def working_test(debug=False) -> bool:
         return True
     except:
         print(sys.exc_info())
-        print(sys.last_traceback)
+        # print(sys.last_traceback)
         return False
 
 

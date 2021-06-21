@@ -100,7 +100,7 @@ array_declaration: ident ident "[" expr "]"
 
 argument_list: (argument ( "," argument )*)?
 
-return_type: ident | (ident ARR)
+!return_type: ident | (ident ARR)
 
 function: return_type ident "(" argument_list ")" "{" stmt_list "}"
 
