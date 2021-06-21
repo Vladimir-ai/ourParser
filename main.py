@@ -35,6 +35,10 @@ if __name__ == '__main__':
     tree.msil(gen)
     gen.end()
 
+    file = open('output/1.il', 'w')
+
+    file.write(str(gen))
+
     print(gen)
 
 

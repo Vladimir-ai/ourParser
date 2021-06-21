@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, Union, List
 from enum import Enum
-from compiler.utils import BinOp, BaseType, to_msil_type
+from compiler.utils import BinOp, BaseType, to_msil_type, bin_to_msil
 from compiler.semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, \
     TYPE_CONVERTIBILITY, ArrayDesc
 
@@ -57,7 +57,7 @@ class AstNode(ABC):
     def semantic_check(self, scope: IdentScope) -> None:
         pass
 
-    def msil(self, gen: CodeGenerator):
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
         pass
 
     @property
@@ -118,6 +118,31 @@ class LiteralNode(ExprNode):
         else:
             self.semantic_error('Неизвестный тип {} для {}'.format(type(self.value), self.value))
 
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        com = 'ldc'
+        if self.node_type == TypeDesc.FLOAT:
+            com += '.r4'
+        else:
+            com += '.i4'
+            if self.node_type == TypeDesc.CHAR:
+                com += '.s'
+
+        if self.node_type == TypeDesc.BOOL:
+            if self.value == 0:
+                com += '.0'
+            else:
+                com += '.1'
+        else:
+            com += '    '
+            if self.node_type == TypeDesc.FLOAT:
+                com += str(self.value)
+            elif self.node_type == TypeDesc.INT:
+                com += str(hex(self.value))
+            else:
+                com += str(ord(self.value))
+
+        gen.add(com)
+
     def __str__(self) -> str:
         return '{0} ({1})'.format(self.literal, type(self.value).__name__)
 
@@ -137,6 +162,12 @@ class FactorNode(ExprNode):
         self.literal.semantic_check(scope)
         self.node_type = self.literal.node_type
 
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        self.literal.msil(gen, args)
+        if self.operation == '-':
+            gen.add('neg')
+        pass
+
     def __str__(self) -> str:
         return f'uno {self.operation}'
 
@@ -153,6 +184,12 @@ class IdentNode(ExprNode):
             self.semantic_error('Идентификатор {} не найден'.format(self.name))
         self.node_type = ident.type
         self.node_ident = ident
+
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        if self.name in args:
+            gen.add(f'ldarg.s  {self.name}')
+        else:
+            gen.add(f'ldloc.s  {self.name}')
 
     def __str__(self) -> str:
         return str(self.name)
@@ -178,7 +215,7 @@ class BinOpNode(ExprNode):
 
         if self.arg1.node_ident is not None and self.arg2.node_ident is not None \
                 and type(self.arg1.node_ident) != type(self.arg1.node_ident):
-            self.semantic_error("BBBBBBBBBBBBBB")
+            self.semantic_error("error")
 
         if self.arg1.node_type.is_simple or self.arg2.node_type.is_simple:
             compatibility = BIN_OP_TYPE_COMPATIBILITY[self.op]
@@ -188,12 +225,13 @@ class BinOpNode(ExprNode):
                 return
 
             if self.arg2.node_type.base_type in TYPE_CONVERTIBILITY:
-                for arg2_type in TYPE_CONVERTIBILITY:
+                for arg2_type in TYPE_CONVERTIBILITY[self.arg2.node_type.base_type]:
                     args_types = (self.arg1.node_type.base_type, arg2_type)
                     if args_types in compatibility:
                         self.arg2 = type_convert(self.arg2, TypeDesc.from_base_type(arg2_type))
                         self.node_type = TypeDesc.from_base_type(compatibility[args_types])
                         return
+
             if self.arg1.node_type.base_type in TYPE_CONVERTIBILITY:
                 for arg1_type in TYPE_CONVERTIBILITY[self.arg1.node_type.base_type]:
                     args_types = (arg1_type, self.arg2.node_type.base_type)
@@ -209,6 +247,11 @@ class BinOpNode(ExprNode):
         self.semantic_error("Оператор {} не применим к типам ({}, {})".format(
             self.op, self.arg1.node_type, self.arg2.node_type
         ))
+
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        self.arg1.msil(gen, args)
+        self.arg2.msil(gen, args)
+        gen.add(bin_to_msil(self.op))
 
     def __str__(self) -> str:
         return str(self.op.value)
@@ -243,7 +286,10 @@ class VarsDeclNode(StmtNode):
             var.semantic_check(scope)
         self.node_type = TypeDesc.VOID
 
-    def msil(self, gen: CodeGenerator) -> None:
+    def msil(self, gen: CodeGenerator, args: List[str] = []) -> None:
+        for var in self.vars_list:
+            if isinstance(var, AssignNode):
+                var.msil(gen, args)
         pass
 
     def get_vars_decl(self):
@@ -338,7 +384,15 @@ class AssignNode(StmtNode):
         self.val = type_convert(self.val, self.var.node_type, self, 'присваиваемое значение')
         self.node_type = self.var.node_type
 
-    def msil(self, gen: CodeGenerator) -> None:
+    def msil(self, gen: CodeGenerator, args: List[str] = []) -> None:
+
+        # TODO value
+        self.val.msil(gen, args)
+
+        if self.var.name in args:
+            gen.add(f'starg.s   {self.var.name}')
+        else:
+            gen.add(f'stloc.s   {self.var.name}')
         pass
 
     def __str__(self) -> str:
@@ -419,9 +473,9 @@ class StmtListNode(StmtNode):
     def __str__(self) -> str:
         return '...'
 
-    def msil(self, gen: CodeGenerator) -> None:
+    def msil(self, gen: CodeGenerator, args: List[str] = []) -> None:
         for stmt in self.exprs:
-            stmt.msil(gen)
+            stmt.msil(gen, args)
 
 
 _empty = StmtListNode()
@@ -555,6 +609,12 @@ class ArgumentListNode(StmtNode):
     def to_msil_str(self) -> str:
         return ', '.join([arg.to_msil_str() for arg in self.children])
 
+    def to_str_arr(self) -> List[str]:
+        ar = []
+        for a in self.children:
+            ar.append(a.name.name)
+        return ar
+
 
 class ReturnTypeNode(AstNode):
     def __init__(self, type: IdentNode, isArr: Optional[str] = None,
@@ -625,13 +685,16 @@ class FunctionNode(StmtNode):
     def __str__(self) -> str:
         return 'function'
 
-    def msil(self, gen: CodeGenerator) -> None:
+    def msil(self, gen: CodeGenerator, args: List[str] = []) -> None:
         start = '.method private hidebysig static '
         start += to_msil_type(self.type.type.name) + ' '
         start += self.name.name + '('
-        args = self.argument_list.to_msil_str()  # TODO arrays
-        start += args
-        start += ') cli managed'
+        arguments = self.argument_list.to_msil_str()  # TODO arrays
+
+        args = self.argument_list.to_str_arr()
+
+        start += arguments
+        start += ') cil managed'
         gen.add(start)
         gen.add('{')
         if self.name.name == 'main':
@@ -644,11 +707,12 @@ class FunctionNode(StmtNode):
         locals += ')'
         gen.add(locals)
 
-        # TODO stmts
+        self.list.msil(gen, args)
 
         # TODO return
 
         if self.type.type.name == 'void':
+            gen.add('nop')
             gen.add('ret')
         gen.add('}')
 
@@ -715,6 +779,48 @@ class TypeConvertNode(ExprNode):
     @property
     def childs(self) -> Tuple[AstNode, ...]:
         return _GroupNode(str(self.type), self.expr),
+
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        self.expr.msil(gen, args)
+        from_type = self.expr.node_type.base_type
+        to_type = self.type.base_type
+        if to_type == BaseType.CHAR:
+            if from_type == BaseType.INT:
+                gen.add('conv.u2')
+            elif from_type == BaseType.BOOL:
+                pass
+            elif from_type == BaseType.FLOAT:
+                gen.add('conv.u2')
+        elif to_type == BaseType.BOOL:  # TODO
+            if from_type == BaseType.INT:
+                gen.add('ldc.i4.0')
+                gen.add('ceq')
+                gen.add('ldc.i4.0')
+                gen.add('ceq')
+            elif from_type == BaseType.CHAR:
+                gen.add('ldc.i4.0')
+                gen.add('ceq')
+                gen.add('ldc.i4.0')
+                gen.add('ceq')
+            elif from_type == BaseType.FLOAT:
+                gen.add('ldc.r4    0.0')
+                gen.add('ceq')
+                gen.add('ldc.i4.0')
+                gen.add('ceq')
+        elif to_type == BaseType.INT:
+            if from_type == BaseType.CHAR:
+                pass
+            elif from_type == BaseType.FLOAT:
+                gen.add('conv.i4')
+            elif from_type == BaseType.BOOL:
+                pass
+        elif to_type == BaseType.FLOAT:
+            if from_type == BaseType.CHAR:
+                gen.add('conv.r4')
+            elif from_type == BaseType.BOOL:
+                gen.add('conv.r4')
+            elif from_type == BaseType.INT:
+                gen.add('conv.r4')
 
 
 def type_convert(expr: ExprNode, type_: TypeDesc, except_node: Optional[AstNode] = None,

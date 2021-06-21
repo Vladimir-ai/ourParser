@@ -1,9 +1,14 @@
 
 
 void main() {
-    int a, c;
-    a = 0 + 1;
-    int b = 1;
-    float d = 1.1 + 3.5;
+//    int a = -1, c = 3;
+//    a = 0 + 1 + 2 + 3;
+//    int b = 123132;
+//    float f = 3.1;
+    bool a = 0.1;
+    bool b = 1;
+    int d = 4.1 & 4;
+
+    char ch = "c";
 
 }

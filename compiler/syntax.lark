@@ -26,6 +26,7 @@ DIV:     "/"
 AND:     "&&"
 OR:      "||"
 BIT_AND: "&"
+XOR:     "^"
 BIT_OR:  "|"
 GE:      ">="
 LE:      "<="
@@ -60,13 +61,22 @@ call:  ident "(" ( expr ( "," expr )* )? ")"
     | add ( ADD | SUB ) mult  -> bin_op
 
 ?compare1: add
-    | add ( GT | LT | GE | LE ) add  -> bin_op
+    | compare1 ( GT | LT | GE | LE ) add  -> bin_op
 
 ?compare2: compare1
-    | compare1 ( EQUALS | NEQUALS ) compare1  -> bin_op
+    | compare2 ( EQUALS | NEQUALS ) compare1  -> bin_op
 
-?logical_and: compare2
-    | logical_and AND compare2  -> bin_op
+?bit_and: compare2
+    | bit_and  BIT_AND compare2 -> bin_op
+
+?xor: bit_and
+    | xor XOR bit_and -> bin_op
+
+?bit_or:  xor
+    | bit_or BIT_OR xor -> bin_op
+
+?logical_and: bit_or
+    | logical_and AND bit_or  -> bin_op
 
 ?logical_or: logical_and
     | logical_or OR logical_and  -> bin_op
@@ -100,7 +110,7 @@ array_declaration: ident ident "[" expr "]"
 
 argument_list: (argument ( "," argument )*)?
 
-return_type: ident | (ident ARR)
+!return_type: ident | (ident ARR)
 
 function: return_type ident "(" argument_list ")" "{" stmt_list "}"
 
@@ -121,4 +131,3 @@ stmt_list: stmt*
 ?prog: stmt_list
 
 ?start: prog
-

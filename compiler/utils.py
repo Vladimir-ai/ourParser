@@ -16,9 +16,43 @@ class BinOp(Enum):
     BIT_OR = '|'
     LOGICAL_AND = '&&'
     LOGICAL_OR = '||'
+    XOR = '^'
 
     def __str__(self):
         return self.value
+
+
+bin_map = {
+    BinOp.ADD: 'add',
+    BinOp.SUB: 'sub',
+    BinOp.MUL: 'mul',
+    BinOp.DIV: 'div',
+    BinOp.GE: 'clt\n'
+              'ldc.i4.0\n'
+              'ceq',
+    BinOp.LE: 'cgt\n'
+              'idc.i4.0\n'
+              'ceq',
+    BinOp.NEQUALS: 'ceq'
+                   'idc.i4.0\n'
+                   'ceq',
+    BinOp.EQUALS: 'ceq',
+    BinOp.GT: 'cgt',
+    BinOp.LT: 'clt',
+    BinOp.BIT_AND: 'and',
+    BinOp.BIT_OR: 'or',
+    BinOp.XOR: 'xor',
+    BinOp.LOGICAL_AND: 'and',
+                       # 'idc.i4.0\n'
+                       # 'ceq\n'
+                       # 'idc.i4.0\n'
+                       # 'ceq',
+    BinOp.LOGICAL_OR: 'or'
+                      # 'idc.i4.0\n'
+                      # 'ceq\n'
+                      # 'idc.i4.0\n'
+                      # 'ceq'
+}
 
 
 class BaseType(Enum):
@@ -61,6 +95,9 @@ def to_msil_inner_type(type):
 
     return result
 
+
+def bin_to_msil(type: BinOp):
+    return bin_map[type]
 
 # def getBinOp(binOp, type: BaseType):
 #     result = str(binOp).replace("+", "add") \
