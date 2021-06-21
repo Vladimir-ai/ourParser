@@ -9,10 +9,10 @@ INT_ARRAY, FLOAT_ARRAY, BOOL_ARRAY, CHAR_ARRAY = \
     ArrayType.INT, ArrayType.FLOAT, ArrayType.BOOL, ArrayType.CHAR
 
 TYPE_CONVERTIBILITY = {
-    INT: (FLOAT, BOOL),
-    FLOAT: (BOOL),
-    BOOL: (INT, CHAR),
-    CHAR: (INT, BOOL)
+    INT: (FLOAT, BOOL, CHAR),
+    FLOAT: (BOOL, INT, CHAR),
+    BOOL: (INT, CHAR, FLOAT),
+    CHAR: (INT, BOOL, FLOAT)
 }
 
 
@@ -77,12 +77,20 @@ BIN_OP_TYPE_COMPATIBILITY = {
     },
 
     BinOp.BIT_AND: {
-        (INT, INT): INT
-    },
+        (INT, INT): INT,
+        (FLOAT, FLOAT): FLOAT,
+        (CHAR, CHAR): CHAR
+},
     BinOp.BIT_OR: {
-        (INT, INT): INT
+        (INT, INT): INT,
+        (CHAR, CHAR): CHAR,
+        (FLOAT, FLOAT): FLOAT
     },
-
+    BinOp.XOR: {
+        (INT, INT): INT,
+        (CHAR, CHAR): CHAR,
+        (FLOAT, FLOAT): FLOAT
+    },
     BinOp.LOGICAL_AND: {
         (BOOL, BOOL): BOOL
     },

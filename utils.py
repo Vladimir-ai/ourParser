@@ -12,6 +12,7 @@ class BinOp(Enum):
     EQUALS = '=='
     GT = '>'
     LT = '<'
+    XOR = '^'
     BIT_AND = '&'
     BIT_OR = '|'
     LOGICAL_AND = '&&'
@@ -60,7 +61,9 @@ def getBinOp(binOp, type: BaseType):
         .replace(">=", "icmp sge").replace("<=", "icmp sle") \
         .replace("<>", "icmp ne").replace("==", "icmp eq") \
         .replace(">", "icmp sgt").replace("<", "icmp slt") \
-        .replace("&", "and").replace("|", "or")
+        .replace("&&", "and").replace("||", "or")\
+        .replace("^", "xor").replace("&", "and")\
+        .replace("|", "or")
 
     if type == BaseType.FLOAT:
         result = str(binOp).replace("+", "fadd") \
@@ -69,7 +72,9 @@ def getBinOp(binOp, type: BaseType):
             .replace(">=", "fcmp oge").replace("<=", "fcmp ole") \
             .replace("<>", "fcmp one").replace("==", "fcmp oeq") \
             .replace(">", "fcmp ogt").replace("<", "fcmp olt") \
-            .replace("&", "and").replace("|", "or")
+            .replace("&&", "and").replace("||", "or")\
+            .replace("^", "xor").replace("&", "and")\
+            .replace("|", "or")
 
     return result
 
@@ -83,10 +88,11 @@ def getConvOp(opFrom: BaseType, opTo: BaseType) -> str:
             or (opFrom == BaseType.CHAR and opTo == BaseType.BOOL):
         return "trunc"
 
-    if (opFrom == BaseType.FLOAT and (opTo == BaseType.BOOL or opTo == BaseType.INT)):
-        return "fptoui"
+    if (opFrom == BaseType.FLOAT and \
+            (opTo == BaseType.BOOL or opTo == BaseType.INT or opTo == BaseType.CHAR)):
+        return "fptosi"
 
-    if (opFrom == BaseType.INT or opFrom == BaseType.BOOL) and opTo == BaseType.FLOAT:
+    if (opFrom == BaseType.INT or opFrom == BaseType.BOOL or opFrom == BaseType.CHAR) and opTo == BaseType.FLOAT:
         return "sitofp"
 
 

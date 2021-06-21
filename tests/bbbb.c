@@ -1,37 +1,26 @@
-//int aa(int a, int b, int c[10]){
-//    print_int(a);
-//    print_int(b);
-//    if (a + b < 10){
-//        return aa(a + 1, b + 1, c);
-//    }
-//    return a;
-//}
+int fib(int num){
 
-int aa(int c[10]){
+    if (num <= 1)
+        return num;
 
-    c[1] = 2;
-    c[2] = 5;
-    c[3] = c[1] + c[2];
+    return fib(num - 1) + fib(num - 2);
 
-    return c[3];
 }
 
 int main(){
-//    int g = 1 + 0.5;
-//    float g = 1.3 + 1;
-//    int a = g;
-    float g = 5.1;
-
 
     int a[10];
+    int b[10];
+
+    b[1] = 10;
+    a[1] = 2;
+
+    b = a;
+
+    print_int(b[1]);
+
     a[1] = 1;
-    a[2] = 4;
-    a[3] = a[1] + a[2];
-
-    float g[10];
-
-    print_int(a[3]);
-    print_int(aa(a));
+    print_int(b[1]);
 
 //    float c[3];
 //
