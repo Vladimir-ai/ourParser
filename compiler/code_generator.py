@@ -30,23 +30,26 @@ class CodeGenerator:
         self.code_lines: List[CodeLine] = []
 
     def start(self) -> None:
-        self.add('.assembly extern mscorelib {')
+        self.add('.assembly extern mscorlib {')
         self.add('.publickeytoken = (B0 3F 5F 7F 11 D5 0A 3A )                         // .?_....:')
         self.add('.ver 5:0:7:0')
         self.add('}')
         self.add('.assembly program')
         self.add('{')
         self.add('}')
-        self.add('.class private auto ansi beforefieldinit Program extends [mscorelib]System.Object')
+        self.add('.class private auto ansi beforefieldinit Program extends [mscorlib]System.Object')
         self.add('{')
-
 
     def end(self) -> None:
         self.add('}')
 
-    def add(self, code: str):
-        self.code_lines.append(CodeLine(code))
+    def add(self, code: str, label: str = None):
+        if label:
+            l = CodeLabel()
+            l.index = label
+            self.code_lines.append(CodeLine(code, label=l))
+        else:
+            self.code_lines.append(CodeLine(code))
 
     def __str__(self):
         return '\n'.join([str(line) for line in self.code_lines])
-

@@ -5,8 +5,8 @@ import compiler.code_generator as msil
 from compiler.tests import working_test
 
 if __name__ == '__main__':
-    # prog = open('tests/aaaaa.C', 'r').read()
-    prog = open('tests/1.c', 'r').read()
+    prog = open('tests/aaaaa.C', 'r').read()
+    # prog = open('tests/1.c', 'r').read()
 
 
     # prog = parser_base.parse("void d(int a[1]){}", True)

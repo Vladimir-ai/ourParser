@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, Union, List
 from enum import Enum
-from compiler.utils import BinOp, BaseType, to_msil_type, bin_to_msil
+from compiler.utils import BinOp, BaseType, to_msil_type, bin_to_msil, isBuiltinFunc, to_msil_func, \
+    to_msil_arr_ind_store_type, to_msil_arr_type, to_msil_arr_ind_load_type
 from compiler.semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, \
     TYPE_CONVERTIBILITY, ArrayDesc
 
 from compiler.code_generator import CodeGenerator
+
+control_counter = 0
 
 
 class KeyWords(Enum):
@@ -74,10 +77,10 @@ class AstNode(ABC):
     def to_msil_str(self) -> str:
         pass
 
-    def get_vars_decl(self):
+    def get_vars_decl(self, args: List[str] = []):
         vars = []
         for child in self.children:
-            v = child.get_vars_decl()
+            v = child.get_vars_decl(args)
             if v:
                 vars.extend(v)
         return vars
@@ -292,7 +295,7 @@ class VarsDeclNode(StmtNode):
                 var.msil(gen, args)
         pass
 
-    def get_vars_decl(self):
+    def get_vars_decl(self, args: List[str] = []):
         vars = []
         for var in self.vars_list:
             type = to_msil_type(self.vars_type.name)
@@ -358,6 +361,28 @@ class CallNode(StmtNode):
             self.func.node_ident = func
             self.node_type = func.type.return_type
 
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        for p in self.params:
+            p.msil(gen, args)
+        f = 'call   '
+
+        if isBuiltinFunc(self.func.name):
+            f += to_msil_func(self.func.name)
+        else:
+            f += to_msil_type(self.node_type.base_type)
+            f += ' '
+
+            f += to_msil_func(self.func.name)
+
+            f += '('
+            pars = []
+            for p in self.params:
+                if isinstance(p, ExprNode):
+                    pars.append(to_msil_type(p.node_type.base_type))
+            f += ', '.join(pars)
+            f += ')'
+        gen.add(f)
+
     def __str__(self) -> str:
         return 'call'
 
@@ -385,15 +410,21 @@ class AssignNode(StmtNode):
         self.node_type = self.var.node_type
 
     def msil(self, gen: CodeGenerator, args: List[str] = []) -> None:
-
-        # TODO value
-        self.val.msil(gen, args)
-
-        if self.var.name in args:
-            gen.add(f'starg.s   {self.var.name}')
+        ar = self.var
+        if isinstance(ar, ArrayIndexingNode):
+            if str(ar.name) in args:
+                gen.add(f'ldarg.s   {ar.name}')
+            else:
+                gen.add(f'ldloc.s   {ar.name}')
+            ar.value.msil(gen, args)
+            self.val.msil(gen, args)
+            gen.add(f'stelem.{to_msil_arr_ind_store_type(ar.node_type)}')
         else:
-            gen.add(f'stloc.s   {self.var.name}')
-        pass
+            self.val.msil(gen, args)
+            if str(self.var.name) in args:
+                gen.add(f'starg.s   {self.var.name}')
+            else:
+                gen.add(f'stloc.s   {self.var.name}')
 
     def __str__(self) -> str:
         return '='
@@ -418,6 +449,19 @@ class IfNode(StmtNode):
         if self.else_stmt:
             self.else_stmt.semantic_check(IdentScope(scope))
         self.node_type = TypeDesc.VOID
+
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        global control_counter
+        control_counter += 1
+        c = control_counter
+        self.cond.msil(gen, args)
+        gen.add(f'brfalse.s    IL_IF_FALSE_{c}')
+        self.then_stmt.msil(gen, args)
+        gen.add(f'br.s    IL_IF_END_{c}')
+        gen.add('nop', f'IF_FALSE_{c}')
+        if self.else_stmt:
+            self.else_stmt.msil(gen, args)
+        gen.add('nop', f'IF_END_{c}')
 
     def __str__(self) -> str:
         return 'if'
@@ -447,6 +491,19 @@ class ForNode(AstNode):
         self.step.semantic_check(scope)
         self.body.semantic_check(IdentScope(scope))
         self.node_type = TypeDesc.VOID
+
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        global control_counter
+        control_counter += 1
+        c = control_counter
+        self.init.msil(gen, args)
+        gen.add(f'br.s  IL_FOR_CTRL_{c}')
+        gen.add('nop', f'FOR_BODY_{c}')
+        self.body.msil(gen, args)
+        self.step.msil(gen, args)
+        gen.add('nop', f'FOR_CTRL_{c}')
+        self.cond.msil(gen, args)
+        gen.add(f'brtrue.s  IL_FOR_BODY_{c}')
 
     def __str__(self) -> str:
         return 'for'
@@ -501,6 +558,18 @@ class WhileNode(StmtNode):
         self.stmt_list.semantic_check(IdentScope(scope))
         self.node_type = TypeDesc.VOID
 
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        global control_counter
+        control_counter += 1
+        c = control_counter
+        gen.add(f'br.s   IL_WHILE_CTRL_{c}')
+        gen.add('nop', f'WHILE_BODY_{c}')
+        self.stmt_list.msil(gen, args)
+
+        gen.add('nop', f'WHILE_CTRL_{c}')
+        self.cond.msil(gen, args)
+        gen.add(f'brtrue.s   IL_WHILE_BODY_{c}')
+
     def __str__(self) -> str:
         return 'while'
 
@@ -533,6 +602,22 @@ class ArrayDeclarationNode(StmtNode):
             self.semantic_error(e.message)
         self.node_type = TypeDesc.arr_from_str(str(self.type_var))
 
+    def to_msil_str(self) -> str:
+        type = to_msil_type(self.type_var.name)
+        id = self.name.name
+        return f'{type}[] {id}'
+
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        self.value.msil(gen, args)
+        gen.add(f'newarr    [mscorlib]System.{to_msil_arr_type(self.type_var)}')
+        gen.add(f'stloc.s   {self.name.name}')
+
+    def get_vars_decl(self, args: List[str] = []):
+        vars = []
+        if self.name.name not in args:
+            vars.append((f'{to_msil_type(self.type_var)}[]', self.name.name))
+        return vars
+
     def __str__(self) -> str:
         return 'array_declaration'
 
@@ -559,6 +644,16 @@ class ArrayIndexingNode(ExprNode):
             self.semantic_error(f"{self.name} is not an array")
 
         self.node_type = scope.get_ident(str(self.name)).toIdentDesc().type
+
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        if self.name in args:
+            gen.add(f'ldarg.s  {self.name}')
+        else:
+            gen.add(f'ldloc.s  {self.name}')
+        self.value.msil(gen, args)
+        gen.add(f'ldelem.{to_msil_arr_ind_load_type(self.node_type)}')
+
+        pass
 
     def __str__(self) -> str:
         return 'array_index'
@@ -702,7 +797,7 @@ class FunctionNode(StmtNode):
         gen.add('.maxstack  8')
 
         locals = '.locals init ('
-        vars = self.get_vars_decl()
+        vars = self.get_vars_decl(args)
         locals += ', '.join([f'[{i}] {var[0]} {var[1]}' for i, var in enumerate(vars)])
         locals += ')'
         gen.add(locals)
@@ -741,6 +836,11 @@ class ReturnNode(ExprNode):
 
     def __str__(self) -> str:
         return 'return'
+
+    def msil(self, gen: CodeGenerator, args: List[str] = []):
+        if self.expr:
+            self.expr.msil(gen, args)
+        gen.add('ret')
 
 
 class _GroupNode(AstNode):

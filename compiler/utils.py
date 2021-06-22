@@ -85,6 +85,31 @@ def to_msil_type(type):
 
     return result
 
+def to_msil_arr_ind_store_type(type):
+    result = str(type).replace("int", "i4") \
+        .replace("float", "r4") \
+        .replace("bool", "i1") \
+        .replace("char", "i2") \
+        .replace("void", "???")
+
+    return result
+
+def to_msil_arr_ind_load_type(type):
+    result = str(type).replace("int", "i4") \
+        .replace("float", "r4") \
+        .replace("bool", "u1") \
+        .replace("char", "u2") \
+        .replace("void", "???")
+    return result
+
+def to_msil_arr_type(type):
+    result = str(type).replace("int", "Int32") \
+        .replace("float", "Simple") \
+        .replace("bool", "Boolean") \
+        .replace("char", "Char") \
+        .replace("void", "???")
+
+    return result
 
 def to_msil_inner_type(type):
     result = str(type).replace("int", "i4") \
@@ -99,50 +124,43 @@ def to_msil_inner_type(type):
 def bin_to_msil(type: BinOp):
     return bin_map[type]
 
-# def getBinOp(binOp, type: BaseType):
-#     result = str(binOp).replace("+", "add") \
-#         .replace("-", "sub") \
-#         .replace("*", "mul").replace("/", "sdiv") \
-#         .replace(">=", "icmp sge").replace("<=", "icmp sle") \
-#         .replace("<>", "icmp ne").replace("==", "icmp eq") \
-#         .replace(">", "icmp sgt").replace("<", "icmp slt") \
-#         .replace("&", "and").replace("|", "or")
-#
-#     if type == BaseType.FLOAT:
-#         result = str(binOp).replace("+", "fadd") \
-#             .replace("-", "fsub") \
-#             .replace("*", "fmul").replace("/", "fdiv") \
-#             .replace(">=", "fcmp oge").replace("<=", "fcmp ole") \
-#             .replace("<>", "fcmp one").replace("==", "fcmp oeq") \
-#             .replace(">", "fcmp ogt").replace("<", "fcmp olt") \
-#             .replace("&", "and").replace("|", "or")
-#
-#     return result
-#
-#
-# def getConvOp(opFrom: BaseType, opTo: BaseType) -> str:
-#     if ((opFrom == BaseType.BOOL or opFrom == BaseType.CHAR) \
-#         and (opTo == BaseType.INT)) or (opFrom == BaseType.BOOL and opTo == BaseType.CHAR):
-#         return "zext"
-#
-#     if (opFrom == BaseType.INT and (opTo == BaseType.BOOL or opTo == BaseType.CHAR)) \
-#             or (opFrom == BaseType.CHAR and opTo == BaseType.BOOL):
-#         return "trunc"
-#
-#     if (opFrom == BaseType.FLOAT and (opTo == BaseType.BOOL or opTo == BaseType.INT)):
-#         return "fptoui"
-#
-#     if (opFrom == BaseType.INT or opFrom == BaseType.BOOL) and opTo == BaseType.FLOAT:
-#         return "sitofp"
-#
-#
-# def isBuiltinFunc(name: str) -> bool:
-#     if name == "print_float" \
-#             or name == "print_int" \
-#             or name == "print_char" \
-#             or name == "read_int" \
-#             or name == "read_float" \
-#             or name == "read_char":
-#         return True
-#
-#     return False
+def to_msil_func(name: str) -> str:
+    ret = ''
+    if isBuiltinFunc(name):
+        if name == 'print_float':
+            ret += 'void [mscorlib]System.Console::WriteLine(float32)'
+        elif name == 'print_int':
+            ret += 'void [mscorlib]System.Console::WriteLine(int32)'
+        elif name == 'print_char':
+            ret += 'void [mscorlib]System.Console::WriteLine(char)'
+        elif name == 'print_bool':
+            ret += 'void [mscorlib]System.Console::WriteLine(bool)'
+        elif name == 'read_float':
+            ret += 'string [mscorlib]System.Console::ReadLine()\n' \
+                   'call    float32 [mscorlib]System.Single::Parse(string)'
+        elif name == 'read_int':
+            ret += 'string [mscorlib]System.Console::ReadLine()\n' \
+                   'call    int32 [mscorlib]System.Int32::Parse(string)'
+        elif name == 'read_char':
+            ret += 'string [mscorlib]System.Console::ReadLine()\n' \
+                   'call    char [mscorlib]System.Char::Parse(string)'
+        elif name == 'read_bool':
+            ret += 'string [mscorlib]System.Console::ReadLine()\n' \
+                   'call    bool [mscorlib]System.Boolean::Parse(string)'
+    else:
+        ret = f'Program::{name}'
+    return ret
+
+
+def isBuiltinFunc(name: str) -> bool:
+    if name == "print_float" \
+            or name == "print_int" \
+            or name == "print_char" \
+            or name == "print_bool" \
+            or name == "read_int" \
+            or name == "read_float" \
+            or name == "read_bool" \
+            or name == "read_char":
+        return True
+
+    return False
