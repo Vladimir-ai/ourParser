@@ -782,7 +782,10 @@ class FunctionNode(StmtNode):
 
     def msil(self, gen: CodeGenerator, args: List[str] = []) -> None:
         start = '.method private hidebysig static '
-        start += to_msil_type(self.type.type.name) + ' '
+        start += to_msil_type(self.type.type.name)
+        if self.type.isArr:
+            start += '[]'
+        start += ' '
         start += self.name.name + '('
         arguments = self.argument_list.to_msil_str()  # TODO arrays
 

@@ -1,17 +1,12 @@
 from compiler import parser_base, semantic
 import os
 import compiler.code_generator as msil
+import subprocess
 
 from compiler.tests import working_test
 
 if __name__ == '__main__':
-    prog = open('tests/aaaaa.C', 'r').read()
-    # prog = open('tests/1.c', 'r').read()
-
-
-    # prog = parser_base.parse("void d(int a[1]){}", True)
-    # print(*parser_base.parse(prog).tree, sep=os.linesep)
-    # parser_base.parse(prog)
+    prog = open('tests/1.c', 'r').read()
 
     if working_test(False):
         print("All tests have been passed")
@@ -40,6 +35,5 @@ if __name__ == '__main__':
     file.write(str(gen))
 
     print(gen)
-
 
 

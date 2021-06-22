@@ -2,8 +2,8 @@ from typing import List, Union
 
 
 class CodeLabel:
-    def __init__(self):
-        self.index = None
+    def __init__(self, label: str = None):
+        self.index = label
 
     def __str__(self):
         return 'IL_' + str(self.index)

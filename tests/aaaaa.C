@@ -1,21 +1,12 @@
 int main(){
-//    a = 0;
-//    int f = -1;
-//    int h, l, e=10;
-//    //-b;
-//    a = b + -1;
-    int df[3];
-    int fg;
-    fg = df[1];
 
-//
-//    for(int i = 0; i < 10; i=i+1){
-//        int k = 0;
-//    }
-//
-//    while(b < 0){
-//
-//    }
+char ch[0];
+
+ch = read_string();
+
+print_string(ch);
+
+
     return 0;
 }
 

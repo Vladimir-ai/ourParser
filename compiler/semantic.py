@@ -320,9 +320,11 @@ def get_default_scope() -> IdentScope:
     void print_float(float var){}
     void print_char(char var){}
     void print_bool(bool var){}
+    void print_string(char var[0]){}
     int read_int(){}
     float read_float(){}
     char read_char(){}
+    char[] read_string(){}
     bool read_bool(){}'''
 
     prog = parser_base.parse(BUILT_IN_FUNCTIONS)

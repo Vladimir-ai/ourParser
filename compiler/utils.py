@@ -77,11 +77,16 @@ class ArrayType(Enum):
 
 
 def to_msil_type(type):
-    result = str(type).replace("int", "int32") \
+    result = str(type).replace('array char', 'char[]') \
+        .replace('array float', 'float[]') \
+        .replace('array bool', 'bool[]') \
+        .replace('array int', 'int[]') \
+        .replace("int", "int32") \
         .replace("float", "float32") \
         .replace("bool", "bool") \
         .replace("char", "char") \
         .replace("void", "void")
+
 
     return result
 
@@ -135,6 +140,8 @@ def to_msil_func(name: str) -> str:
             ret += 'void [mscorlib]System.Console::WriteLine(char)'
         elif name == 'print_bool':
             ret += 'void [mscorlib]System.Console::WriteLine(bool)'
+        elif name == 'print_string':
+            ret += 'void [mscorlib]System.Console::WriteLine(char[])'
         elif name == 'read_float':
             ret += 'string [mscorlib]System.Console::ReadLine()\n' \
                    'call    float32 [mscorlib]System.Single::Parse(string)'
@@ -147,6 +154,9 @@ def to_msil_func(name: str) -> str:
         elif name == 'read_bool':
             ret += 'string [mscorlib]System.Console::ReadLine()\n' \
                    'call    bool [mscorlib]System.Boolean::Parse(string)'
+        elif name == 'read_string':
+            ret += 'string [mscorlib]System.Console::ReadLine()\n' \
+                   'callvirt    instance char[] [mscorlib]System.String::ToCharArray()'
     else:
         ret = f'Program::{name}'
     return ret
@@ -157,9 +167,11 @@ def isBuiltinFunc(name: str) -> bool:
             or name == "print_int" \
             or name == "print_char" \
             or name == "print_bool" \
+            or name == "print_string" \
             or name == "read_int" \
             or name == "read_float" \
             or name == "read_bool" \
+            or name == "read_string" \
             or name == "read_char":
         return True
 
