@@ -97,12 +97,14 @@ def getConvOp(opFrom: BaseType, opTo: BaseType) -> str:
 
 
 def isBuiltinFunc(name: str) -> bool:
-    if name == "print_float" \
-            or name == "print_int" \
+    if name == "print_float"        \
+            or name == "print_int"  \
             or name == "print_char" \
-            or name == "read_int" \
+            or name == "print_str"  \
+            or name == "read_int"   \
             or name == "read_float" \
-            or name == "read_char":
+            or name == "read_char"  \
+            or name == "read_str":
         return True
 
     return False

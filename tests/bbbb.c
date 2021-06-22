@@ -1,26 +1,32 @@
-int fib(int num){
+int[] arr(int num){
+    int arr[num];
 
-    if (num <= 1)
-        return num;
+    for (int i = 0; i < num; i = i + 1){
+        arr[num] = 100 - i;
+    }
 
-    return fib(num - 1) + fib(num - 2);
+    return arr;
+}
 
+int aaaaa(int num){
+    int aa = num;
+    return aa;
 }
 
 int main(){
 
-    int a[10];
+    char a[10];
     int b[10];
+//    a[1] = aaaaa(1);
 
-    b[1] = 10;
-    a[1] = 2;
+    a = read_str();
 
-    b = a;
+    for (int i = 0; i < 10; i = i + 1){
+        a[i] = a[i] + i;
+    }
 
-    print_int(b[1]);
+    print_str(a);
 
-    a[1] = 1;
-    print_int(b[1]);
 
 //    float c[3];
 //

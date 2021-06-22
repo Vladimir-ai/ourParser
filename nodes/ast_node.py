@@ -5,7 +5,7 @@ from utils import BinOp, BaseType, getLLVMtype, getBinOp, getConvOp, isBuiltinFu
 from semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, TYPE_CONVERTIBILITY, \
     ArrayDesc
 
-from code_generator import CodeGenerator, INT_POINTER_CONST, CHAR_POINTER_CONST, FLOAT_POINTER_CONST
+from code_generator import CodeGenerator, INT_POINTER_CONST, CHAR_POINTER_CONST, FLOAT_POINTER_CONST, STR_POINTER_CONST
 
 
 class KeyWords(Enum):
@@ -367,9 +367,23 @@ class CallNode(StmtNode):
                         f"([4 x i8], [4 x i8]* @inputFloat, i32 0, i32 0), double* {FLOAT_POINTER_CONST})")
                 gen.add(f"{result} = load double, double* {FLOAT_POINTER_CONST}")
 
+            elif self.func.name == "read_str":
+                gen.add(f"{result} = alloca i8, i32 100")
+                gen.add(f"call i32 (i8*, ...) @scanf(i8* getelementptr inbounds "
+                        f"([3 x i8], [3 x i8]* @inputStr, i32 0, i32 0), i8* {result})")
+
             return result
 
-        if len(self.params) == 1 and isBuiltinFunc(self.func.name):
+        if len(self.params) == 1 and self.func.name == "print_str" and isinstance(self.params[0], IdentNode):
+            temp_var = gen.getTempVar()
+            gen.addTempVarIndex()
+            gen.add(f"%{temp_var} = load i8*, i8** %{self.params[0].name}")
+            gen.add(f"{result} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
+                        f"([4 x i8], [4 x i8]* @formatStr, i32 0, i32 0), i8* %{temp_var})")
+
+            return result
+
+        elif len(self.params) == 1 and isBuiltinFunc(self.func.name):
             var0 = self.params[0].load(gen)
 
             if self.func.name == "print_float" and self.params[0].node_type.base_type == BaseType.FLOAT:
@@ -387,7 +401,10 @@ class CallNode(StmtNode):
 
             return result
 
-        res_str = f"{result} = call {getLLVMtype(self.node_type.base_type)} @{self.func.name}("
+        call_type = getLLVMtype(self.node_type.base_type)
+        if self.node_type.is_arr:
+            call_type+= "*"
+        res_str = f"{result} = call {call_type} @{self.func.name}("
         args = []
         for param in self.params:
             if param.node_type.is_arr:
@@ -438,11 +455,27 @@ class AssignNode(StmtNode):
                 and self.val.node_type.array:
             self_type = getLLVMtype(self.node_type.base_type)
 
-            temp_val = gen.getTempVar()
-            gen.addTempVarIndex()
-            gen.add(f"%{temp_val} = load {self_type}*, {self_type}** %{self.val.name}")
+            if self.val.node_type.is_arr and isinstance(self.val, CallNode):
+                result = self.val.load(gen)
+                var_type = getLLVMtype(self.var.node_type)
+                gen.add(f"store {var_type}* {result}, {var_type}** %{self.var.name} ")
+                return;
 
-            gen.add(f"store {self_type}* %{temp_val}, {self_type}** %{self.var.name}")
+            temp_val_loaded = gen.getTempVar()
+            gen.addTempVarIndex()
+            temp_var_space = gen.getTempVar()
+            gen.addTempVarIndex()
+            size = self.val.node_ident.size.load(gen)
+            assigment_type = getLLVMtype(self.node_type.base_type)
+
+            gen.add(f"%{temp_val_loaded} = load {self_type}*, {self_type}** %{self.val.name}")
+            gen.add(f"%{temp_var_space} = alloca {self_type}, i32 {size}")
+
+            gen.add(f"call void @llvm.memcpy.p0{assigment_type}.p0{assigment_type}.i32("
+                    f"{assigment_type}* %{temp_var_space}, {assigment_type}* %{temp_val_loaded},"
+                    f" i32 {size}, i1 0)")
+
+            gen.add(f"store {self_type}* %{temp_var_space}, {self_type}** %{self.var.name}")
             return;
 
         if isinstance(self.var, ArrayIndexingNode):
@@ -541,6 +574,7 @@ class ForNode(AstNode):
 
     def to_llvm(self, gen: CodeGenerator):
         varIndex = gen.getVarIndex('for')
+        gen.addVarIndex('for')
         forHeader = f"for.head.{varIndex}"
         forCond = f"for.cond.{varIndex}"
         forBody = f"for.body.{varIndex}"
@@ -802,7 +836,7 @@ class ReturnTypeNode(AstNode):
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
         self.type = type
-        self.isArr = isArr
+        self.isArr = True if isArr is not None else False
 
     @property
     def children(self) -> Tuple[ExprNode, ...]:
@@ -849,7 +883,12 @@ class FunctionNode(StmtNode):
                 params.append(TypeDesc.from_str(str(param.type_var)))
 
         if self.type.isArr:
-            type_ = TypeDesc(None, TypeDesc.arr_from_str(str(self.type.type)), tuple(params))
+
+            # scope.add_ident(ArrayDesc(str(self.name), TypeDesc.arr_from_str(str(self.type_var)),
+            #                           type_convert(self.value, TypeDesc.INT, self)))
+            #
+            ret = TypeDesc.arr_from_str(str(self.type.type))
+            type_ = TypeDesc(None, ret, tuple(params), True)
             func_ident = ArrayDesc(self.name.name, type_, 1)
         else:
             type_ = TypeDesc(None, TypeDesc.from_str(str(self.type.type)), tuple(params))
@@ -864,7 +903,13 @@ class FunctionNode(StmtNode):
         self.node_type = TypeDesc.VOID
 
     def to_llvm(self, gen: CodeGenerator) -> None:
-        code = f"define {getLLVMtype(self.type.type.name)} @{self.name.name}" \
+
+        func_type = f"{getLLVMtype(self.type.type.name)}"\
+
+        if self.type.isArr:
+            func_type += "*"
+
+        code = f"define {func_type} @{self.name.name}" \
                f"({self.argument_list.load(gen)}) "'{'
         gen.add(code)
 
@@ -921,8 +966,15 @@ class ReturnNode(ExprNode):
         self.node_type = TypeDesc.VOID
 
     def to_llvm(self, gen: CodeGenerator):
-        res = self.expr.load(gen) if self.expr is not None else "void"
-        gen.add(f"ret {getLLVMtype(self.expr.node_type)} {res}")
+        if isinstance(self.expr, IdentNode) and self.expr.node_type.is_arr:
+            temp_var = gen.getTempVar()
+            var_type = getLLVMtype(self.expr.node_type)
+            gen.addTempVarIndex()
+            gen.add(f"%{temp_var} = load {var_type}*, {var_type}** %{self.expr.name}")
+            gen.add(f"ret {var_type}* %{temp_var}")
+        else:
+            res = self.expr.load(gen) if self.expr is not None else "void"
+            gen.add(f"ret {getLLVMtype(self.expr.node_type)} {res}")
 
     def __str__(self) -> str:
         return 'return'
@@ -985,8 +1037,6 @@ class TypeConvertNode(ExprNode):
         gen.addTempVarIndex()
         return var
 
-    # TODO i32 to i1
-
     def __str__(self) -> str:
         return 'convert'
 
@@ -1005,6 +1055,8 @@ def type_convert(expr: ExprNode, type_: TypeDesc, except_node: Optional[AstNode]
     :return: узел AST-дерева c операцией преобразования
     """
 
+    if expr.node_type != type_:
+        a = 1
     if expr.node_type is None:
         except_node.semantic_error('Тип выражения не определен')
     if expr.node_type == type_:

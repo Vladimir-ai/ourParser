@@ -129,7 +129,7 @@ class TypeDesc:
 
     @property
     def is_simple(self) -> bool:
-        return not self.func or not self.array
+        return not self.func and not self.array
 
     def __eq__(self, other: 'TypeDesc'):
         if self.func != other.func:
@@ -320,11 +320,12 @@ def get_default_scope() -> IdentScope:
     BUILT_IN_FUNCTIONS = '''void print_int(int var){}
     void print_float(float var){}
     void print_char(char var){}
-    void print_bool(bool var){}
+    void print_str(char var[0]){}
     int read_int(){}
     float read_float(){}
     char read_char(){}
-    bool read_bool(){}'''
+    char[] read_str(){}
+    '''
 
     prog = parser_base.parse(BUILT_IN_FUNCTIONS)
     scope = IdentScope()
@@ -335,6 +336,3 @@ def get_default_scope() -> IdentScope:
 
     scope.var_index = 0
     return scope
-
-
-
