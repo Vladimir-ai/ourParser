@@ -189,7 +189,9 @@ class IdentNode(ExprNode):
         self.node_ident = ident
 
     def msil(self, gen: CodeGenerator, args: List[str] = []):
-        if self.name in args:
+        print(self.name)
+        print(args)
+        if str(self.name) in args:
             gen.add(f'ldarg.s  {self.name}')
         else:
             gen.add(f'ldloc.s  {self.name}')
@@ -412,7 +414,10 @@ class AssignNode(StmtNode):
     def msil(self, gen: CodeGenerator, args: List[str] = []) -> None:
         ar = self.var
         if isinstance(ar, ArrayIndexingNode):
-            if str(ar.name) in args:
+
+            print(ar.name)
+            print(args)
+            if str(ar.name.name) in args:
                 gen.add(f'ldarg.s   {ar.name}')
             else:
                 gen.add(f'ldloc.s   {ar.name}')
@@ -455,13 +460,13 @@ class IfNode(StmtNode):
         control_counter += 1
         c = control_counter
         self.cond.msil(gen, args)
-        gen.add(f'brfalse.s    IL_IF_FALSE_{c}')
+        gen.add(f'brfalse   IL_IF_FALSE_{c}')
         self.then_stmt.msil(gen, args)
-        gen.add(f'br.s    IL_IF_END_{c}')
+        gen.add(f'br    IL_IF_END_{c}')
         gen.add('nop', f'IF_FALSE_{c}')
         if self.else_stmt:
             self.else_stmt.msil(gen, args)
-        gen.add('nop', f'IF_END_{c}')
+        gen.add('nop', f'IF_END{c}')
 
     def __str__(self) -> str:
         return 'if'
@@ -497,13 +502,13 @@ class ForNode(AstNode):
         control_counter += 1
         c = control_counter
         self.init.msil(gen, args)
-        gen.add(f'br.s  IL_FOR_CTRL_{c}')
+        gen.add(f'br  IL_FOR_CTRL_{c}')
         gen.add('nop', f'FOR_BODY_{c}')
         self.body.msil(gen, args)
         self.step.msil(gen, args)
         gen.add('nop', f'FOR_CTRL_{c}')
         self.cond.msil(gen, args)
-        gen.add(f'brtrue.s  IL_FOR_BODY_{c}')
+        gen.add(f'brtrue  IL_FOR_BODY_{c}')
 
     def __str__(self) -> str:
         return 'for'
@@ -562,13 +567,13 @@ class WhileNode(StmtNode):
         global control_counter
         control_counter += 1
         c = control_counter
-        gen.add(f'br.s   IL_WHILE_CTRL_{c}')
+        gen.add(f'br   IL_WHILE_CTRL_{c}')
         gen.add('nop', f'WHILE_BODY_{c}')
         self.stmt_list.msil(gen, args)
 
         gen.add('nop', f'WHILE_CTRL_{c}')
         self.cond.msil(gen, args)
-        gen.add(f'brtrue.s   IL_WHILE_BODY_{c}')
+        gen.add(f'brtrue   IL_WHILE_BODY_{c}')
 
     def __str__(self) -> str:
         return 'while'
@@ -614,7 +619,7 @@ class ArrayDeclarationNode(StmtNode):
 
     def get_vars_decl(self, args: List[str] = []):
         vars = []
-        if self.name.name not in args:
+        if str(self.name.name) not in args:
             vars.append((f'{to_msil_type(self.type_var)}[]', self.name.name))
         return vars
 
@@ -646,7 +651,7 @@ class ArrayIndexingNode(ExprNode):
         self.node_type = scope.get_ident(str(self.name)).toIdentDesc().type
 
     def msil(self, gen: CodeGenerator, args: List[str] = []):
-        if self.name in args:
+        if str(self.name) in args:
             gen.add(f'ldarg.s  {self.name}')
         else:
             gen.add(f'ldloc.s  {self.name}')

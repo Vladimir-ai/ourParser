@@ -31,10 +31,10 @@ bin_map = {
               'ldc.i4.0\n'
               'ceq',
     BinOp.LE: 'cgt\n'
-              'idc.i4.0\n'
+              'ldc.i4.0\n'
               'ceq',
     BinOp.NEQUALS: 'ceq'
-                   'idc.i4.0\n'
+                   'ldc.i4.0\n'
                    'ceq',
     BinOp.EQUALS: 'ceq',
     BinOp.GT: 'cgt',

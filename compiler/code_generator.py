@@ -1,6 +1,9 @@
 from typing import List, Union
 
 
+counter = 0
+
+
 class CodeLabel:
     def __init__(self, label: str = None):
         self.index = label
@@ -16,9 +19,14 @@ class CodeLine:
         self.params = params
 
     def __str__(self):
+        global counter
+        counter += 1
         line = ''
         if self.label:
             line += str(self.label) + ': '
+        else:
+            if not self.code.startswith('.') and not self.code.startswith('{') and not self.code.startswith('}'):
+                line += 'IL_'+ str(hex(counter)) + ': '
         line += self.code
         for p in self.params:
             line += ' ' + str(p)

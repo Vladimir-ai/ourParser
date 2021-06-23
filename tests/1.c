@@ -1,6 +1,17 @@
 
-int plus(int a, int b){
-    return a + b;
+void bubbleSort(int arr[0], int n)
+{
+   int i, j;
+   for (i = 0; i < n-1; i = i + 1) {
+   for (j = 0; j < n-i-1; j = j + 1) {
+           if (arr[j] > arr[j+1]) {
+           int tmp = arr[j];
+           arr[j] = arr[j+1];
+           arr[j+1] = tmp;
+           }
+   }
+   }
+
 }
 
 char[] give_me_ascii(){
@@ -13,17 +24,25 @@ char[] give_me_ascii(){
 
 void main() {
 
-    int a = 1;
-    int b = 1;
-    int d = 4.1 & 4;
+    int n = 10;
 
-    for (int i = 4; i > 0; i = i - 1) {
-        for (int j = 3; j > 0; j = j - 1) {
-            print_int(plus(i,j));
-        }
+    int a[10];
+
+
+    for (int i = n; i > 0; i = i - 1) {
+        a[n-i] = i;
+
     }
 
-    print_string(give_me_ascii());
+    for (int i = 0; i < n; i = i + 1) {
+    print_int(a[i]);
+    }
+
+    bubbleSort(a, n);
+
+    for (int i = 0; i < n; i = i + 1) {
+    print_int(a[i]);
+    }
 
     char ch = "c";
 }
