@@ -5,7 +5,7 @@ from utils import BinOp, BaseType, getLLVMtype, getBinOp, getConvOp, isBuiltinFu
 from semantic import IdentScope, TypeDesc, SemanticException, IdentDesc, BIN_OP_TYPE_COMPATIBILITY, TYPE_CONVERTIBILITY, \
     ArrayDesc
 
-from code_generator import CodeGenerator, INT_POINTER_CONST, CHAR_POINTER_CONST, FLOAT_POINTER_CONST, STR_POINTER_CONST
+from code_generator import CodeGenerator, INT_POINTER_CONST, CHAR_POINTER_CONST, FLOAT_POINTER_CONST
 
 
 class KeyWords(Enum):
@@ -755,11 +755,13 @@ class ArrayIndexingNode(ExprNode):
         gen.add(f"%{temp_var} = load {self_type}*, {self_type}** %{self.name.name}")
 
         gen.addTempVarIndex()
-        gen.add(f"%{gen.getTempVar()} = getelementptr inbounds {self_type}, "
+        ptr = gen.getTempVar()
+        gen.addTempVarIndex()
+        gen.add(f"%{ptr} = getelementptr inbounds {self_type}, "
                 f"{self_type}* %{temp_var}, "
                 f"{getLLVMtype(self.value.node_type)} {self.value.load(gen)}")
 
-        gen.add(f"{result} = load {self_type}, {self_type}* %{gen.getTempVar()}")
+        gen.add(f"{result} = load {self_type}, {self_type}* %{ptr}")
         gen.addVarIndex(self.name.name)
         gen.addTempVarIndex()
         return result
@@ -931,7 +933,7 @@ class FunctionNode(StmtNode):
                     gen.add(f"store {arg_type}* %{arg.name.name}.{gen.getVarIndex(arg.name.name)},"
                             f"{arg_type}** %{arg.name.name}")
 
-                    gen.addVarIndex(arg.name.name)  # TODO check correctness
+                    gen.addVarIndex(arg.name.name)
 
         self.list.to_llvm(gen)
 
@@ -1055,8 +1057,6 @@ def type_convert(expr: ExprNode, type_: TypeDesc, except_node: Optional[AstNode]
     :return: узел AST-дерева c операцией преобразования
     """
 
-    if expr.node_type != type_:
-        a = 1
     if expr.node_type is None:
         except_node.semantic_error('Тип выражения не определен')
     if expr.node_type == type_:

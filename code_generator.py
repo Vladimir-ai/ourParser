@@ -4,7 +4,6 @@ from typing import List, Dict
 INT_POINTER_CONST = "@int.0.0"
 CHAR_POINTER_CONST = "@char.0.0"
 FLOAT_POINTER_CONST = "@float.0.0"
-STR_POINTER_CONST = "@char.0.1"
 
 
 class CodeLine:
@@ -31,7 +30,6 @@ class CodeGenerator:
 
         self.code_lines.append(CodeLine(f"{INT_POINTER_CONST} = global i32 0"))
         self.code_lines.append(CodeLine(f"{CHAR_POINTER_CONST} = global i8 0"))
-        self.code_lines.append(CodeLine(f"{STR_POINTER_CONST} = external global i8*"))
         self.code_lines.append(CodeLine(f"{FLOAT_POINTER_CONST} = global double 0.0\n"))
 
         self.code_lines.append(CodeLine("@formatInt = private constant [4 x i8] c\"%d\\0A\\00\""))

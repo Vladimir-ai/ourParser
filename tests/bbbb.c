@@ -1,32 +1,51 @@
-int[] arr(int num){
-    int arr[num];
-
-    for (int i = 0; i < num; i = i + 1){
-        arr[num] = 100 - i;
+int print_arr(char arr[10], int n){
+    for(int i = 0; i < n; i = i + 1){
+        print_char(arr[i]);
     }
-
-    return arr;
-}
-
-int aaaaa(int num){
-    int aa = num;
-    return aa;
+    return 0;
 }
 
 int main(){
 
     char a[10];
-    int b[10];
+    int b[20];
 //    a[1] = aaaaa(1);
+
+    int n = 10;
+    int k = 0;
+
+    int c = 0;
+    float g = c;
+    bool cc = 0;
+    float gg = cc;
+    char ccc = "a";
+    float ggg = ccc;
+
+    print_float(g);
+    print_float(gg);
+    print_float(ggg);
 
     a = read_str();
 
-    for (int i = 0; i < 10; i = i + 1){
-        a[i] = a[i] + i;
-    }
+    char arr[10];
 
-    print_str(a);
+    arr = a;
 
+    for (int i = 0; i < n - 1; i = i + 1)
+        for (int j = 0; j < n - i - 1; j = j + 1){
+            int ind = j + 1;
+            if (arr[j] < arr[j + 1]){
+                int temp = arr[ind];
+                arr[j + 1] = arr[j];
+                arr[j] = temp;
+            }
+        }
+
+    print_arr(arr, 10);
+
+//    for (k = 0; k < n; k = k + 1){
+//        print_char(arr[k]);
+//    }
 
 //    float c[3];
 //
