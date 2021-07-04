@@ -283,12 +283,10 @@ class VarsDeclNode(StmtNode):
         val = "0" if BaseType(self.vars_type.name) != BaseType.FLOAT else "0.0"
         for node in self.vars_list:
             if isinstance(node, AssignNode):
-                if gen.getVarIndex(node.var.name) == 0:
-                    gen.add(f"%{node.var.name} = alloca {getLLVMtype(self.vars_type.name)}")
+                gen.add(f"%{node.var.name} = alloca {getLLVMtype(self.vars_type.name)}")
                 node.to_llvm(gen)
             if isinstance(node, IdentNode):
-                if gen.getVarIndex(node.name) == 0:
-                    gen.add(f"%{node.name} = alloca {getLLVMtype(self.vars_type.name)}")
+                gen.add(f"%{node.name} = alloca {getLLVMtype(self.vars_type.name)}")
                 gen.add(
                     f"store {getLLVMtype(self.vars_type.name)} {val}, {getLLVMtype(self.vars_type.name)}* %{node.name}")
 

@@ -44,9 +44,6 @@ int main(){
         print_int(i);
     }
 
-    print_char("a");
-    for (int i = 10; i >= 0; i = i - 1)
-        print_int(i);
 
     char arr[10];
 
