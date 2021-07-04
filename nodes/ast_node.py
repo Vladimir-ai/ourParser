@@ -283,10 +283,12 @@ class VarsDeclNode(StmtNode):
         val = "0" if BaseType(self.vars_type.name) != BaseType.FLOAT else "0.0"
         for node in self.vars_list:
             if isinstance(node, AssignNode):
-                gen.add(f"%{node.var.name} = alloca {getLLVMtype(self.vars_type.name)}")
+                if gen.getVarIndex(node.var.name) == 0:
+                    gen.add(f"%{node.var.name} = alloca {getLLVMtype(self.vars_type.name)}")
                 node.to_llvm(gen)
             if isinstance(node, IdentNode):
-                gen.add(f"%{node.name} = alloca {getLLVMtype(self.vars_type.name)}")
+                if gen.getVarIndex(node.name) == 0:
+                    gen.add(f"%{node.name} = alloca {getLLVMtype(self.vars_type.name)}")
                 gen.add(
                     f"store {getLLVMtype(self.vars_type.name)} {val}, {getLLVMtype(self.vars_type.name)}* %{node.name}")
 
@@ -404,7 +406,10 @@ class CallNode(StmtNode):
         call_type = getLLVMtype(self.node_type.base_type)
         if self.node_type.is_arr:
             call_type+= "*"
-        res_str = f"{result} = call {call_type} @{self.func.name}("
+        if self.node_type.base_type == BaseType.VOID:
+            res_str = f"call void @{self.func.name}("
+        else:
+            res_str = f"{result} = call {call_type} @{self.func.name}("
         args = []
         for param in self.params:
             if param.node_type.is_arr:
@@ -571,6 +576,7 @@ class ForNode(AstNode):
         self.step.semantic_check(scope)
         self.body.semantic_check(IdentScope(scope))
         self.node_type = TypeDesc.VOID
+        self.scope = scope
 
     def to_llvm(self, gen: CodeGenerator):
         varIndex = gen.getVarIndex('for')
@@ -966,6 +972,7 @@ class ReturnNode(ExprNode):
             self.expr = type_convert(self.expr, func.func.type.return_type, self, 'возвращаемое значение')
 
         self.node_type = TypeDesc.VOID
+        self.scope = scope
 
     def to_llvm(self, gen: CodeGenerator):
         if isinstance(self.expr, IdentNode) and self.expr.node_type.is_arr:
@@ -976,7 +983,15 @@ class ReturnNode(ExprNode):
             gen.add(f"ret {var_type}* %{temp_var}")
         else:
             res = self.expr.load(gen) if self.expr is not None else "void"
-            gen.add(f"ret {getLLVMtype(self.expr.node_type)} {res}")
+
+            if self.expr is None:
+                gen.add(f"ret void")
+            else:
+                gen.add(f"ret {getLLVMtype(self.expr.node_type)} {res}")
+
+            if self.scope is not None:
+                for ident in self.scope.idents:
+                    gen.removeIdent(ident)
 
     def __str__(self) -> str:
         return 'return'

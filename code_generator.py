@@ -63,6 +63,9 @@ class CodeGenerator:
     def addTempVarIndex(self):
         self.addVarIndex("temp")
 
+    def removeIdent(self, ident: str):
+        self.var_counter.pop(ident, None)
+
     def __str__(self):
         code = ""
         for line in self.code_lines:
